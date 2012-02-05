@@ -234,15 +234,15 @@ class Ctrl_EditTask
 			return true;
 
 		case 1:
-			$name->putError( "Une tâche porte déjà ce nom à cet endroit" );
+			$name->putError( "A task already uses this title for this item." );
 			break;
 
 		case 2:
-			$item->putError( "Cet endroit a été supprimé" );
+			$item->putError( "This item has been deleted." );
 			break;
 
 		default:
-			$name->putError( "Une erreur inconnue s'est produite ($error)" );
+			$name->putError( "An unknown error occurred ($error)" );
 			break;
 		}
 
