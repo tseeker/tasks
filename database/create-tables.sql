@@ -22,6 +22,7 @@ GRANT SELECT,UPDATE ON notes_note_id_seq TO :webapp_user;
 CREATE SEQUENCE task_dependencies_taskdep_id_seq INCREMENT 1
 	MINVALUE 1 MAXVALUE 9223372036854775807
 	START 1 CACHE 1;
+GRANT SELECT,UPDATE ON task_dependencies_taskdep_id_seq TO :webapp_user;
 
 -- Tables
 

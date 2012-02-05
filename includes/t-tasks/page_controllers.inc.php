@@ -353,3 +353,97 @@ class Ctrl_EditNoteForm
 	}
 
 }
+
+
+class Ctrl_DependencyAddForm
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		// Check selected note
+		try {
+			$id = (int) $this->getParameter( 'to' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+
+		$tasks = Loader::DAO( 'tasks' );
+		$task = $tasks->get( $id );
+		if ( $task === null ) {
+			return 'tasks';
+		}
+		if ( $task->completed_at !== null || empty( $task->possibleDependencies ) ) {
+			return 'tasks/view?id=' . $id;
+		}
+		$page->setTitle( $task->title . ' (task)' );
+
+		// Generate form
+		$form = Loader::Create( 'Form' , 'Add dependency' , 'add-dep' )
+			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
+			->setDefaultValue( $id ) );
+		$this->addDependencySelector( $form , $task->possibleDependencies );
+		return $form->setURL( 'tasks/view?id=' . $id )
+			->addController( Loader::Ctrl( 'dependency_add' ) )
+			->controller( );
+
+	}
+
+	private function addDependencySelector( $form , $possibleDependencies )
+	{
+		$form->addField( $select = Loader::Create( 'Field' , 'dependency' , 'select' )
+			->setDescription( 'Dependency to add:' )
+			->addOption( '' , '(please select a task)' ) );
+
+		$depsByItem = $this->getDependenciesByItem( $possibleDependencies );
+		$items = $this->getItemsToDisplay( $depsByItem );
+		foreach ( $items as $item ) {
+			$prefix = '-' . str_repeat( '--' , $item->depth );
+			$name = $prefix . ' ' . $item->name;
+			$select->addOption( 'I' . $item->id , $name , true );
+			if ( ! array_key_exists( $item->id , $depsByItem ) ) {
+				continue;
+			}
+
+			foreach ( $depsByItem[ $item->id ] as $task ) {
+				$select->addOption( $task->id , $prefix . '-> ' . $task->title );
+			}
+		}
+		return true;
+
+	}
+
+	private function getDependenciesByItem( $possibleDependencies )
+	{
+		$dbi = array( );
+		foreach ( $possibleDependencies as $pDep ) {
+			$dbi[ $pDep->item ][] = $pDep;
+		}
+		return $dbi;
+	}
+
+	private function getItemsToDisplay( $depsByItem )
+	{
+		$dao = Loader::DAO( 'items' );
+		$allItems = $dao->getTreeList( );
+		$found = array( );
+		foreach ( array_keys( $depsByItem ) as $id ) {
+			if ( array_key_exists( $id , $found ) ) {
+				continue;
+			}
+			$item = $dao->get( $id );
+			foreach ( $dao->getLineage( $item ) as $parent ) {
+				$found[ $parent ] = 1;
+			}
+			$found[ $id ] = 1;
+		}
+
+		$result = array( );
+		foreach ( $allItems as $item ) {
+			if ( array_key_exists( $item->id , $found ) ) {
+				array_push( $result , $item );
+			}
+		}
+		return $result;
+	}
+}

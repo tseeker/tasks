@@ -107,9 +107,14 @@ class Ctrl_TaskDependencies
 	public function handle( Page $page )
 	{
 		$views = array(
-			Loader::View( 'box' , 'Dependencies' ,
+			$depBox = Loader::View( 'box' , 'Dependencies' ,
 				Loader::View( 'task_dependencies' , $this->task , false ) )
 		);
+
+		if ( ! empty( $this->task->possibleDependencies ) ) {
+			$depBox->addButton( BoxButton::create( 'Add dependency' , 'tasks/deps/add?to=' . $this->task->id )
+					->setClass( 'list-add' ) );
+		}
 
 		if ( ! empty( $this->task->reverseDependencies ) ) {
 			array_push( $views , Loader::View( 'box' , 'Reverse dependencies' ,
@@ -338,5 +343,45 @@ class Ctrl_EditNote
 		$text = $this->form->field( 'text' )->value( );
 		Loader::DAO( 'tasks' )->updateNote( $id , $text );
 		return true;
+	}
+}
+
+
+class Ctrl_DependencyAdd
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+	public function setForm( Form $form )
+	{
+		$this->form = $form;
+	}
+
+	public function handle( Page $page )
+	{
+		$id = (int) $this->form->field( 'to' )->value( );
+		$dependency = $this->form->field( 'dependency' )->value( );
+		$error = Loader::DAO( 'tasks' )->addDependency( $id , $dependency );
+
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$name->putError( 'The task you selected has been deleted.' );
+			break;
+
+		case 2:
+			$item->putError( 'This dependency is no longer possible.' );
+			break;
+
+		default:
+			$name->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
 	}
 }

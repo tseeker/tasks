@@ -287,7 +287,7 @@ CREATE OR REPLACE FUNCTION tasks_add_dependency( t_id INT , t_dependency INT )
 		SECURITY INVOKER
 	AS $tasks_add_dependency$
 BEGIN
-	INSERT INTO task_dependencies( task_id , task_id_depends_on )
+	INSERT INTO task_dependencies( task_id , task_id_depends )
 		VALUES ( t_id , t_dependency );
 	RETURN 0;
 EXCEPTION

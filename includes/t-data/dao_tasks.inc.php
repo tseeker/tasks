@@ -107,7 +107,7 @@ class DAO_Tasks
 			.		'INNER JOIN items i USING ( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.	'WHERE td.task_id = $1 '
-			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
+			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->reverseDependencies = $this->query(
 			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
 			.		'i.item_name AS item_name , '
@@ -117,6 +117,12 @@ class DAO_Tasks
 			.		'INNER JOIN items i USING ( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks ct USING ( task_id ) '
 			.	'WHERE td.task_id_depends = $1 '
+			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
+		$task->possibleDependencies = $this->query(
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			.		'i.item_name AS item_name '
+			.	'FROM tasks_possible_dependencies( $1 ) t '
+			.		'INNER JOIN items i USING ( item_id ) '
 			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
 
 		return $task;
@@ -216,6 +222,13 @@ class DAO_Tasks
 	{
 		$this->query( 'UPDATE notes SET note_text = $2 , note_added = now( ) WHERE note_id = $1' )
 			->execute( $id , $text );
+	}
+
+	public function addDependency( $id , $dependency )
+	{
+		$result = $this->query( 'SELECT tasks_add_dependency( $1 , $2 ) AS error' )
+			->execute( $id , $dependency );
+		return $result[0]->error;
 	}
 
 }

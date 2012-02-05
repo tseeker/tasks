@@ -57,7 +57,7 @@ class DAO_Items
 	public function getLineage( Data_Item $item )
 	{
 		if ( is_array( $item->lineage ) ) {
-			return;
+			return $item->lineage;
 		}
 
 		$query = $this->query(
@@ -80,6 +80,7 @@ class DAO_Items
 			array_push( $stack , $entry->item_id );
 		}
 		$item->lineage = $stack;
+		return $item->lineage;
 	}
 
 
