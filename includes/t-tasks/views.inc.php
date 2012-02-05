@@ -272,7 +272,7 @@ class View_TaskNote
 
 
 class View_TaskDependencies
-	implements View
+	extends BaseURLAwareView
 {
 	private $task;
 	private $reverse;
@@ -286,16 +286,35 @@ class View_TaskDependencies
 	public function render( )
 	{
 		$source = $this->reverse ? 'reverseDependencies' : 'dependencies';
+		if ( empty( $this->task->$source ) ) {
+			return HTML::make( 'div' )
+				->setAttribute( 'class' , 'no-table' )
+				->appendText( 'This task has no dependencies.' );
+		}
+
 		$list = HTML::make( 'ul' )->setAttribute( 'class' , 'dep-list' );
+		$prevItem = null;
+		$itemList = null;
 		foreach ( $this->task->$source as $dependency ) {
+			if ( $prevItem !== $dependency->item ) {
+				$itemList = HTML::make( 'ul' );
+				$list->appendElement( HTML::make( 'li' )
+					->appendText( 'In ' )
+					->appendElement( HTML::make( 'a' )
+						->setAttribute( 'href' , $this->base . '/items/view?id=' . $dependency->item )
+						->appendText( $dependency->item_name ) )
+					->appendElement( $itemList ) );
+				$prevItem = $dependency->item;
+			}
 			$link = HTML::make( 'a' )
-				->setAttribute( 'href' , 'tasks/view?id=' . $dependency->id )
+				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $dependency->id )
 				->appendText( $dependency->title );
 			if ( ! $this->reverse ) {
 				$link->setAttribute( 'class' , ( $dependency->completed == 't' )
 					? 'satisfied' : 'missing' );
 			}
-			$list->appendElement( HTML::make( 'li' )->appendElement( $link ) );
+			$itemList->appendElement( HTML::make( 'li' )->appendElement( $link ) );
 		}
+		return $list;
 	}
 }

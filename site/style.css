@@ -393,3 +393,11 @@ dl.tasks dt.sub-title.completed {
 	color: #bfbfbf;
 	text-shadow: 1px 1px 2px #3f3f3f;
 }
+
+ul.dep-list a.missing {
+	color: red;
+}
+
+ul.dep-list a.satisfied {
+	color: green;
+}

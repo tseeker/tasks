@@ -98,6 +98,27 @@ class DAO_Tasks
 			.		'INNER JOIN users u USING (user_id) '
 			.	'WHERE n.task_id = $1 '
 			.	'ORDER BY n.note_added DESC' )->execute( $id );
+		$task->dependencies = $this->query(
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			.		'i.item_name AS item_name , '
+			.		'( ct.completed_task_time IS NOT NULL ) AS completed '
+			.	'FROM task_dependencies td '
+			.		'INNER JOIN tasks t ON t.task_id = td.task_id_depends '
+			.		'INNER JOIN items i USING ( item_id ) '
+			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
+			.	'WHERE td.task_id = $1 '
+			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
+		$task->reverseDependencies = $this->query(
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			.		'i.item_name AS item_name , '
+			.		'( ct.completed_task_time IS NOT NULL ) AS completed '
+			.	'FROM task_dependencies td '
+			.		'INNER JOIN tasks t USING( task_id ) '
+			.		'INNER JOIN items i USING ( item_id ) '
+			.		'LEFT OUTER JOIN completed_tasks ct USING ( task_id ) '
+			.	'WHERE td.task_id_depends = $1 '
+			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
+
 		return $task;
 	}
 
@@ -110,6 +131,30 @@ class DAO_Tasks
 		}
 		$ts = strtotime( $task->added_at );
 		return ( time() - $ts < 600 ) && ( $task->uid == $_SESSION[ 'uid' ] );
+	}
+
+
+	public function canFinish( $task )
+	{
+		assert( $task->completed_at == null );
+		foreach ( $task->dependencies as $dependency ) {
+			if ( $dependency->completed != 't' ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+
+	public function canRestart( $task )
+	{
+		assert( $task->completed_at != null );
+		foreach ( $task->reverseDependencies as $dependency ) {
+			if ( $dependency->completed == 't' ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 

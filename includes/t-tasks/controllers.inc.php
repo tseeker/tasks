@@ -66,15 +66,20 @@ class Ctrl_TaskDetails
 		$items->getLineage( $this->task->item = $items->get( $this->task->item ) );
 
 		$box = Loader::View( 'box' , $bTitle , Loader::View( 'task_details' , $this->task ) );
+
+		$tasks = Loader::DAO( 'tasks' );
 		if ( $this->task->completed_by === null ) {
 			$box->addButton( BoxButton::create( 'Edit task' , 'tasks/edit?id=' . $this->task->id )
-					->setClass( 'icon edit' ) )
-				->addButton( BoxButton::create( 'Mark as completed' ,
-						'tasks/finish?id=' . $this->task->id )
-					->setClass( 'icon stop' ) );
+					->setClass( 'icon edit' ) );
+			if ( $tasks->canFinish( $this->task ) ) {
+				$box->addButton( BoxButton::create( 'Mark as completed' , 'tasks/finish?id=' . $this->task->id )
+						->setClass( 'icon stop' ) );
+			};
 		} else {
-			$box->addButton( BoxButton::create( 'Re-activate' , 'tasks/restart?id=' . $this->task->id )
+			if ( $tasks->canRestart( $this->task ) ) {
+				$box->addButton( BoxButton::create( 'Re-activate' , 'tasks/restart?id=' . $this->task->id )
 					->setClass( 'icon start' ) );
+			}
 			$timestamp = strtotime( $this->task->completed_at );
 		}
 
@@ -84,6 +89,34 @@ class Ctrl_TaskDetails
 		}
 
 		return $box;
+	}
+}
+
+
+class Ctrl_TaskDependencies
+	extends Controller
+{
+	private $task;
+
+	public function __construct( $task )
+	{
+		$this->task = $task;
+	}
+
+
+	public function handle( Page $page )
+	{
+		$views = array(
+			Loader::View( 'box' , 'Dependencies' ,
+				Loader::View( 'task_dependencies' , $this->task , false ) )
+		);
+
+		if ( ! empty( $this->task->reverseDependencies ) ) {
+			array_push( $views , Loader::View( 'box' , 'Reverse dependencies' ,
+				Loader::View( 'task_dependencies' , $this->task , true ) ) );
+		}
+
+		return $views;
 	}
 }
 
@@ -161,9 +194,9 @@ class Ctrl_ToggleTask
 			return 'tasks';
 		}
 
-		if ( $this->isRestart ) {
+		if ( $this->isRestart && $tasks->canRestart( $task ) ) {
 			$tasks->restart( $id , '[AUTO] Task re-activated.' );
-		} else {
+		} else if ( ! $this->isRestart && $tasks->canFinish( $task ) ) {
 			$tasks->finish( $id , '[AUTO] Task completed.' );
 		}
 

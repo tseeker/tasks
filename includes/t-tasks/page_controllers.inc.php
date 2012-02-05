@@ -150,7 +150,10 @@ class Ctrl_ViewTask
 		}
 		$page->setTitle( $task->title . ' (task)' );
 
-		$result = array( Loader::Ctrl( 'task_details' , $task ) );
+		$result = array(
+			Loader::Ctrl( 'task_details' , $task ) ,
+			Loader::Ctrl( 'task_dependencies' , $task ) ,
+		);
 
 		if ( $task->completed_by === null ) {
 			array_push( $result , Loader::Ctrl( 'add_task_note_form' , $task ) );
