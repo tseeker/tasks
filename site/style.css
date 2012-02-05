@@ -1,0 +1,395 @@
+/*
+ * PAGE
+ */
+
+body {
+	text-align: center;
+	background-color: #3f3f3f;
+	min-width: 792px;
+}
+
+* {
+	font-family: "DejaVu Serif", serif;
+}
+
+textarea {
+	font-family: monospace;
+}
+
+div.page-container {
+	margin: 10px auto;
+	width: 752px;
+	min-height: 300px;
+	background-color: white;
+	border-radius: 20px;
+	padding: 20px 20px 32px 20px;
+	text-align: left;
+	box-shadow: 0 0 500px 20px white;
+}
+
+div.page-container > h1:first-child {
+	background-color: black;
+	border-color: white;
+	border-radius: 20px;
+	border-style: solid;
+	border-width: 1px;
+	color: white;
+	font-size: 16pt;
+	margin: -20px -20px 0px -20px;
+	padding: 30px 10px 10px 15px;
+	box-shadow: 0px 5px 15px #3f3f3f;
+	text-shadow: 3px 3px 2px #7f7f7f;
+	height: 30px;
+}
+
+div.page-container > h1.no-menu:first-child {
+	padding-top: 10px;
+	margin-bottom: 30px;
+}
+
+div.page-container > ul.page-menu {
+	margin: -75px -20px 75px -20px;
+	border-color: white;
+	border-style: solid;
+	border-radius: 20px 20px 0px 0px;
+	border-width: 1px 1px 0px 1px;
+	background-color: #3f3f7f;
+	padding: 5px 15px 5px 10px;
+}
+
+div.page-container > ul.page-menu li {
+	display: inline-block;
+	list-style-type: none;
+	margin: 0;
+	padding: 0px;
+}
+
+div.page-container > ul.page-menu a {
+	display: block;
+	width: 100%;
+	margin: 0 5px;
+	color: white;
+	text-decoration: none;
+	font-size: 10pt;
+	padding: 0px;
+}
+
+div.page-container > ul.page-menu a:hover {
+	color: yellow;
+	text-decoration: underline;
+}
+
+
+/*
+ * CONTENT
+ */
+
+dt {
+	font-size: 12pt;
+	color: #3f3f3f;
+	font-weight: bold;
+}
+
+a {
+	color: #3f3f7f;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+
+/*
+ * BOXES (GENERAL)
+ */
+
+div.box {
+	margin: 20px 0 0 60px;
+	width: 600px;
+	padding: 15px;
+	border-radius: 15px;
+	box-shadow: 5px 5px 15px #3f3f7f;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #3f3f7f;
+	background-color: #afafff;
+}
+
+h2.box-title {
+	font-size: 13pt;
+	margin: -15px -15px 0 -15px;
+	padding: 3px 0px 3px 20px;
+	background-color: #3f3f7f;
+	color: white;
+	border-radius: 14px;
+	text-shadow: 2px 2px 1px #7f7f7f;
+}
+
+div.box-buttons {
+	margin: -24px 0px 0px 0px;
+	height: 18px;
+	width: 610px;
+	text-align: right;
+	vertical-align: top;
+}
+
+div.box-buttons a {
+	display: inline-block;
+	background-clip: content-box;
+	background-color: white;
+	background-origin: content-box;
+	margin-left: 4px;
+	color: black;
+	font-size: 10pt;
+	text-decoration: none;
+	text-align: center;
+	border-radius: 10px;
+	width: 18px;
+	height: 18px;
+}
+
+div.box-buttons:first-child a {
+	border-color: #3f3f7f;
+	border-width: 1px;
+	border-style: solid;
+}
+
+div.box-buttons a:hover {
+	background-color: black;
+	color: yellow;
+	box-shadow: 0px 0px 5px 3px yellow;
+}
+
+div.box-buttons:first-child a:hover {
+	border-color: black;
+}
+
+div.box-buttons a span {
+	display: none;
+}
+
+div.box-contents {
+	margin-top: 15px;
+}
+
+div.box-contents:first-child {
+	margin-top: 0px;
+}
+
+
+/*
+ * FORMS
+ */
+
+div.form a.form-cancel::after {
+	content: 'X';
+	font-weight: bold;
+}
+
+.form form , .form dl {
+	margin: 0;
+	padding: 0;
+}
+
+.form dt:first-child { margin: 0 }
+.form dt { margin-top: 10px }
+
+.form dt.mandatory.field label:after {
+	content: ' (required)';
+	color: #0000ff;
+	font-style: italic;
+	font-weight: normal;
+	font-size: 70%;
+}
+
+.form dd.field { padding-top: 3px }
+
+.form dt.field + dd.form-error { padding-top: 3px }
+
+.form dd {
+	margin-right: 40px;
+	margin-left: 40px;
+}
+
+.form dd.form-error {
+	font-size: 11pt;
+	font-weight: bold;
+	color: #7f0000;
+}
+
+.form input , .form select , .form textarea {
+	border-radius: 10px;
+	border-color: #efefff;
+	border-style: solid;
+	border-width: 1px;
+	background-color: #cfcfff;
+	width: 100%;
+	padding: 3px 8px;
+}
+
+.form input:focus , .form select:focus, .form textarea:focus {
+	border-color: #7f7fff;
+}
+
+.form textarea {
+	font-family: "DejaVu Mono", monospace;
+	font-size: 10pt;
+	height: 100px;
+}
+
+.form dd.erroneous * {
+	border-color: #ff0000;
+	background-color: #ffcfcf;
+	color: #7f0000;
+}
+
+.form dd.erroneous select > option:disabled {
+	color: black;
+}
+
+.form dt.submit-button { margin-top: 20px }
+.form dt.submit-button input {
+	padding: 5px 0;
+	color: white;
+	font-weight: bold;
+	background-color: #3f3f7f;
+	border-color: black;
+}
+
+.form dd.html-section {
+	margin: 0;
+}
+
+.form dd.html-section p {
+	font-size: 11pt;
+	text-align: justify;
+	text-indent: 20px;
+	margin: 10px 0;
+}
+
+.form dd.html-section p:first-child {
+	padding-top: 15px;
+}
+
+.form dd.html-section p:last-child {
+	padding-bottom: 15px;
+}
+
+
+/*
+ * LISTS
+ */
+
+div.list div.box-contents {
+	margin-left: -15px;
+	margin-right: -15px;
+	width: 630px;
+}
+
+div.list table {
+	width: 630px;
+	border-collapse: collapse;
+}
+
+div.list tr > *:first-child { padding-left: 5px }
+div.list tr > *:last-child { padding-right: 5px }
+div.list th , div.list td { text-align: left }
+div.list tr:nth-child(2) > * { padding-top: 10px }
+div.list tr:nth-child(odd) { background-color: #cfcfff }
+div.list tr.header { background-color: #afafff }
+
+div.list .header th {
+	padding-bottom: 10px;
+	border-style: solid;
+	border-width: 0 0 1px 0;
+	border-color: black;
+}
+
+div.list th.align-center, div.list td.align-center { text-align: center }
+div.list th.align-right, div.list td.align-right { text-align: right }
+
+div.list td a {
+	display: block;
+	width: 100%;
+}
+
+div.box-contents div.no-table {
+	margin: 20px 0 10px 0;
+	text-align: center;
+	font-weight: bold;
+}
+
+
+/*
+ * VARIOUS BOX BUTTONS
+ */
+
+div.box-buttons a.icon::after {
+	content: 'x';
+	color: transparent;
+	font-weight: bold;
+}
+
+div.box-buttons a.icon {
+	background-image: url( "icons.png" );
+}
+
+div.box-buttons a.icon + a:not(.icon ) {
+	vertical-align: top;
+}
+
+div.box-buttons a.move { background-position: 0px 0px }
+div.box-buttons a.move:hover { background-position: -18px 0px }
+
+div.box-buttons a.edit { background-position: 0px -18px }
+div.box-buttons a.edit:hover { background-position: -18px -18px }
+
+div.box-buttons a.delete { background-position: 0px -36px }
+div.box-buttons a.delete:hover { background-position: -18px -36px }
+
+div.box-buttons a.refresh { background-position: 0px -54px }
+div.box-buttons a.refresh:hover { background-position: -18px -54px }
+
+div.box-buttons a.stop { background-position: 0px -72px }
+div.box-buttons a.stop:hover { background-position: -18px -72px }
+
+div.box-buttons a.start { background-position: 0px -90px }
+div.box-buttons a.start:hover { background-position: -18px -90px }
+
+div.box-buttons a.list-add::after {
+	content: '+';
+	font-weight: bold;
+}
+
+
+/*
+ * TASKS
+ */
+
+dl.tasks dt:not(:first-child) {
+	margin-top: 10px;
+}
+
+dl.tasks dd, dl.tasks dd * {
+	font-size: 10pt;
+}
+
+dl.tasks dt.sub-title {
+	margin: 20px -15px 0px -15px;
+	padding: 22px 5px 2px 5px;
+	background-color: #5F5FAF;
+	color: white;
+	text-shadow: 2px 2px 1px #7F7F7F;
+	box-shadow: inset 0px 20px 20px #AFAFFF, inset 0px -5px 5px #AFAFFF;
+
+}
+
+dl.tasks .completed, dl.tasks .completed * {
+	color: #3f3f3f
+}
+
+dl.tasks dt.sub-title.completed {
+	color: #bfbfbf;
+	text-shadow: 1px 1px 2px #3f3f3f;
+}

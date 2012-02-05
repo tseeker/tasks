@@ -1,0 +1,3 @@
+[submodule "arse"]
+	path = arse
+	url = git@github.com:tseeker/arse.git
