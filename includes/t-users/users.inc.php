@@ -34,9 +34,16 @@ class Ctrl_UsersList
 class Ctrl_UsersAddForm
 	extends Controller
 {
+	private $initial;
+
+	public function __construct( $initial = false )
+	{
+		$this->initial = $initial;
+	}
+
 	public function handle( Page $page )
 	{
-		return Loader::Create( 'Form' , 'Create user' , 'user-add' )
+		$form = Loader::Create( 'Form' , 'Create user' , 'user-add' )
 			->addField( Loader::Create( 'Field' , 'email' , 'text' )
 					->setDescription( 'E-mail address:' )
 					->setValidator( Loader::Create( 'Validator_Email' , 'Invalid address.' ) ) )
@@ -45,9 +52,16 @@ class Ctrl_UsersAddForm
 					->setValidator( Loader::Create( 'Validator_StringLength' , 'This password' , 8 ) ) )
 			->addField( Loader::Create( 'Field' , 'pass2' , 'password' )
 					->setDescription( 'Confirm password:' ) )
-			->setURL( 'users' )
-			->addController( Loader::Ctrl( 'users_add' ) )
-			->controller( );
+			->addController( Loader::Ctrl( 'users_add' , $this->initial ) );
+
+		if ( $this->initial ) {
+			$form->setSuccessURL( 'home' );
+			$page->setTitle( 'Initial user' );
+		} else {
+			$form->setURL( 'users' );
+		}
+
+		return $form->controller( );
 	}
 }
 
@@ -57,6 +71,12 @@ class Ctrl_UsersAdd
 	implements FormAware
 {
 	private $form;
+	private $initial;
+
+	public function __construct( $initial )
+	{
+		$this->initial = $initial;
+	}
 
 	public function setForm( Form $form )
 	{
@@ -80,6 +100,10 @@ class Ctrl_UsersAdd
 		switch ( $error ) {
 
 			case 0:
+				if ( $this->initial ) {
+					session_start( );
+					$_SESSION[ 'uid' ] = Loader::DAO( 'users' )->getUser( $email->value( ) )->user_id;
+				}
 				return true;
 
 			case 1:

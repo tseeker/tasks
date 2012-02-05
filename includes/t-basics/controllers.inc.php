@@ -10,8 +10,10 @@ class Ctrl_HomePage
 		session_start( );
 		if (  array_key_exists( 'uid' , $_SESSION ) ) {
 			return 'items';
-		} else {
+		} elseif ( Loader::DAO( 'users' )->hasUsers( ) ) {
 			return 'login';
+		} else {
+			return 'install';
 		}
 	}
 
@@ -118,4 +120,18 @@ class Ctrl_LoggedOut
 		return null;
 	}
 
+}
+
+
+class Ctrl_Install
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		if ( Loader::DAO( 'users' )->hasUsers( ) ) {
+			return 'login';
+		}
+		return Loader::Ctrl( 'users_add_form' , true );
+	}
 }

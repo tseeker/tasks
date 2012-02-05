@@ -74,6 +74,6 @@ class Dao_Users
 	public function hasUsers( )
 	{
 		$result = $this->query( 'SELECT COUNT(*) AS n_users FROM users' )->execute( );
-		return $result[0]->n_users;
+		return $result[0]->n_users > 0;
 	}
 }

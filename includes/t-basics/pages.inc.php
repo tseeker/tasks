@@ -66,3 +66,14 @@ class Page_TasksLogout
 		$this->addController( Loader::Ctrl( 'logout' ) );
 	}
 }
+
+
+class Page_TasksInstall
+	extends Page_Basic
+{
+	public function __construct( )
+	{
+		parent::__construct( );
+		$this->addController( Loader::Ctrl( 'install' ) );
+	}
+}
