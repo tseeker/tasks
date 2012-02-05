@@ -24,13 +24,26 @@ class DAO_Tasks
 			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
 			.		't.task_description AS description, t.task_added AS added_at, '
 			.		'u1.user_email AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_email AS completed_by , t.task_priority AS priority '
+			.		'u2.user_email AS completed_by , t.task_priority AS priority , '
+			.		'bd.bad_deps AS missing_dependencies '
 			.	'FROM tasks t '
 			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.		'LEFT OUTER JOIN users u2 ON u2.user_id = ct.user_id '
-			.	'ORDER BY ( CASE WHEN ct.task_id IS NULL THEN t.task_priority ELSE -1 END ) DESC , '
-			.		't.task_added DESC' )->execute( );
+			.		'LEFT OUTER JOIN ('
+			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
+			.				'FROM task_dependencies td '
+			.					'LEFT OUTER JOIN completed_tasks dct '
+			.						'ON dct.task_id = td.task_id_depends '
+			.				'WHERE dct.task_id IS NULL '
+			.				'GROUP BY td.task_id'
+			.			') AS bd ON bd.task_id = t.task_id '
+			.	'ORDER BY ( CASE '
+			.			'WHEN ct.task_id IS NULL THEN '
+			.				't.task_priority '
+			.			'ELSE '
+			.				'-1 '
+			.		'END ) DESC , bd.bad_deps ASC NULLS FIRST , t.task_added DESC' )->execute( );
 	}
 
 	public function getAllActiveTasks( )
@@ -39,12 +52,41 @@ class DAO_Tasks
 			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
 			.		't.task_description AS description, t.task_added AS added_at, '
 			.		'u1.user_email AS added_by, NULL AS completed_at, NULL AS completed_by , '
-			.		't.task_priority AS priority '
+			.		't.task_priority AS priority , NULL::INT AS missing_dependencies '
 			.	'FROM tasks t '
 			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.	'WHERE ct.task_id IS NULL '
+			.		'LEFT OUTER JOIN ('
+			.			'SELECT td.task_id , td.task_id_depends AS bad_dep '
+			.				'FROM task_dependencies td '
+			.					'LEFT OUTER JOIN completed_tasks dct '
+			.						'ON dct.task_id = td.task_id_depends '
+			.				'WHERE dct.task_id IS NULL'
+			.			') AS bd ON bd.task_id = t.task_id '
+			.	'WHERE ct.task_id IS NULL AND bd.bad_dep IS NULL '
 			.	'ORDER BY t.task_priority DESC , t.task_added DESC' )->execute( );
+	}
+
+	public function getAllBlockedTasks( )
+	{
+		return $this->query(
+			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
+			.		't.task_description AS description, t.task_added AS added_at, '
+			.		'u1.user_email AS added_by, NULL AS completed_at, NULL AS completed_by , '
+			.		't.task_priority AS priority , bd.bad_deps AS missing_dependencies '
+			.	'FROM tasks t '
+			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
+			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
+			.		'LEFT OUTER JOIN ('
+			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
+			.				'FROM task_dependencies td '
+			.					'LEFT OUTER JOIN completed_tasks dct '
+			.						'ON dct.task_id = td.task_id_depends '
+			.				'WHERE dct.task_id IS NULL '
+			.				'GROUP BY td.task_id'
+			.			') AS bd ON bd.task_id = t.task_id '
+			.	'WHERE ct.task_id IS NULL AND bd.bad_deps <> 0 '
+			.	'ORDER BY t.task_priority DESC , bd.bad_deps DESC , t.task_added DESC' )->execute( );
 	}
 
 
@@ -54,14 +96,27 @@ class DAO_Tasks
 			'SELECT t.task_id AS id, t.task_title AS title, '
 			.		't.task_description AS description, t.task_added AS added_at, '
 			.		'u1.user_email AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_email AS completed_by , t.task_priority AS priority '
+			.		'u2.user_email AS completed_by , t.task_priority AS priority , '
+			.		'bd.bad_deps AS missing_dependencies '
 			.	'FROM tasks t '
 			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.		'LEFT OUTER JOIN users u2 ON u2.user_id = ct.user_id '
+			.		'LEFT OUTER JOIN ('
+			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
+			.				'FROM task_dependencies td '
+			.					'LEFT OUTER JOIN completed_tasks dct '
+			.						'ON dct.task_id = td.task_id_depends '
+			.				'WHERE dct.task_id IS NULL '
+			.				'GROUP BY td.task_id'
+			.			') AS bd ON bd.task_id = t.task_id '
 			.	'WHERE t.item_id = $1'
-			.	'ORDER BY ( CASE WHEN ct.task_id IS NULL THEN t.task_priority ELSE -1 END ) DESC , '
-			.		't.task_added DESC' )->execute( $item->id );
+			.	'ORDER BY ( CASE '
+			.			'WHEN ct.task_id IS NULL THEN '
+			.				't.task_priority '
+			.			'ELSE '
+			.				'-1 '
+			.		'END ) DESC , bd.bad_deps ASC NULLS FIRST , t.task_added DESC' )->execute( $item->id );
 	}
 
 

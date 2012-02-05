@@ -389,6 +389,10 @@ dl.tasks .completed, dl.tasks .completed * {
 	color: #3f3f3f
 }
 
+dl.tasks .missing-deps, dl.tasks .missing-deps * {
+	color: #7f3f3f
+}
+
 dl.tasks dt.sub-title.completed {
 	color: #bfbfbf;
 	text-shadow: 1px 1px 2px #3f3f3f;

@@ -15,6 +15,11 @@ class Ctrl_AllTasks
 		if ( $mode == 'active' ) {
 			$tasks = Loader::DAO( 'tasks' )->getAllActiveTasks( );
 			$title = 'Active tasks';
+			$bTitle = 'Display active tasks';
+			$bMode = 'blocked';
+		} elseif ( $mode == 'blocked' ) {
+			$tasks = Loader::DAO( 'tasks' )->getAllBlockedTasks( );
+			$title = 'Blocked tasks';
 			$bTitle = 'Display all tasks';
 			$bMode = 'all';
 		} else {

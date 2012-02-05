@@ -80,8 +80,19 @@ class View_AllTasks
 		$addedAtTime = date( 'H:i:s' , $addedAt );
 		array_push( $cell ,
 			HTML::make( 'dd' )->appendText( "Added $addedAtDate at $addedAtTime by {$task->added_by}" ) );
+		if ( $task->missing_dependencies !== null ) {
+			if ( $task->missing_dependencies > 1 ) {
+				$end = 'ies';
+			} else {
+				$end = 'y';
+			}
+			array_push( $cell ,
+				HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
 
-		if ( $task->completed_by !== null ) {
+			foreach ( $cell as $entry ) {
+				$entry->setAttribute( 'class' , 'missing-deps' );
+			}
+		} elseif ( $task->completed_by !== null ) {
 			$completedAt = strtotime( $task->completed_at );
 			$completedAtDate = date( 'd/m/o' , $completedAt );
 			$completedAtTime = date( 'H:i:s' , $completedAt );
@@ -142,7 +153,19 @@ class View_Tasks
 		array_push( $cell ,
 			HTML::make( 'dd' )->appendText( "Added $addedAtDate at $addedAtTime by {$task->added_by}" ) );
 
-		if ( $task->completed_by !== null ) {
+		if ( $task->missing_dependencies !== null ) {
+			if ( $task->missing_dependencies > 1 ) {
+				$end = 'ies';
+			} else {
+				$end = 'y';
+			}
+			array_push( $cell ,
+				HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+
+			foreach ( $cell as $entry ) {
+				$entry->setAttribute( 'class' , 'missing-deps' );
+			}
+		} elseif ( $task->completed_by !== null ) {
 			$completedAt = strtotime( $task->completed_at );
 			$completedAtDate = date( 'd/m/o' , $completedAt );
 			$completedAtTime = date( 'H:i:s' , $completedAt );
