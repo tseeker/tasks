@@ -1,43 +1,126 @@
 <?php
 
 
-class Dao_Users
-	extends DAO
+class Page_TasksUsers
+	extends AuthenticatedPage
 {
-	private function hashPassword( $password , $salt , $iterations )
+	public function __construct( )
 	{
-		$hash = $password;
-		$salt = trim( $salt );
-		do {
-			$hash = sha1( "$salt$hash$salt" );
-			$iterations --;
-		} while ( $iterations > 0 );
-		return $hash;
+		parent::__construct( array(
+			''	=> 'users_list' ,
+			'add'	=> 'users_add_form' ,
+		) );
+		$this->setTitle( 'Users' );
+	}
+}
+
+
+class Ctrl_UsersList
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		$dao = Loader::DAO( 'users' );
+		return Loader::View( 'box' , null , Loader::View( 'users_list' , $dao->getUsers( ) ) )
+			->setClass( 'list' )
+			->addButton( BoxButton::create( 'Add user' , 'users/add' )
+				->setClass( 'list-add' ) );
+	}
+
+}
+
+
+class Ctrl_UsersAddForm
+	extends Controller
+{
+	public function handle( Page $page )
+	{
+		return Loader::Create( 'Form' , 'Create user' , 'user-add' )
+			->addField( Loader::Create( 'Field' , 'email' , 'text' )
+					->setDescription( 'E-mail address:' )
+					->setValidator( Loader::Create( 'Validator_Email' , 'Invalid address.' ) ) )
+			->addField( Loader::Create( 'Field' , 'pass' , 'password' )
+					->setDescription( 'Password:' )
+					->setValidator( Loader::Create( 'Validator_StringLength' , 'This password' , 8 ) ) )
+			->addField( Loader::Create( 'Field' , 'pass2' , 'password' )
+					->setDescription( 'Confirm password:' ) )
+			->setURL( 'users' )
+			->addController( Loader::Ctrl( 'users_add' ) )
+			->controller( );
+	}
+}
+
+
+class Ctrl_UsersAdd
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+	public function setForm( Form $form )
+	{
+		$this->form = $form;
 	}
 
 
-	public function getUser( $email )
+	public function handle( Page $page )
 	{
-		$query = $this->query( 'SELECT * FROM users WHERE user_email = LOWER( $1 )' );
-		$results = $query->execute( $email );
-		if ( empty( $results ) ) {
+		$p1 = $this->form->field( 'pass' );
+		$p2 = $this->form->field( 'pass2' );
+		if ( $p1->value( ) != $p2->value( ) ) {
+			$p1->putError( 'Passwords did not match.' );
 			return null;
 		}
-		return array_shift( $results );
-	}
 
+		$email = $this->form->field( 'email' );
+		$error = Loader::DAO( 'users' )->addUser( $email->value( ) ,
+			$p1->value( ) );
 
-	public function checkLogin( $email , $password )
-	{
-		$userData = $this->getUser( $email );
-		if ( $userData != null ) {
-			$hashed = $this->hashPassword( $password ,
-				$userData->user_salt ,
-				$userData->user_iterations );
-			if ( $hashed === $userData->user_hash ) {
-				return $userData;
-			}
+		switch ( $error ) {
+
+			case 0:
+				return true;
+
+			case 1:
+				$email->putError( 'This e-mail address is already in use.' );
+				break;
+
+			default:
+				$email->putError( 'Some unknown error has occurred (' . $error . ')' );
+				break;
 		}
 		return null;
+	}
+
+}
+
+
+
+class View_UsersList
+	extends BaseURLAwareView
+{
+	private $users;
+
+	public function __construct( $users )
+	{
+		$this->users = $users;
+	}
+
+	public function render( )
+	{
+		$table = HTML::make( 'table' )
+			->appendElement( HTML::make( 'tr' )
+				->setAttribute( 'class' , 'header' )
+				->appendElement( HTML::make( 'th' )
+					->appendText( 'E-mail address' ) ) );
+
+		foreach ( $this->users as $user ) {
+			$table->appendElement( HTML::make( 'tr' )
+				->appendElement( HTML::make( 'td' )
+					->appendText( $user->user_email ) ) );
+		}
+
+		return $table;
 	}
 }

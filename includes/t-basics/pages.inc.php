@@ -14,6 +14,7 @@ abstract class AuthenticatedPage
 		return array(
 			'items'		=> 'Items' ,
 			'tasks'		=> 'Tasks' ,
+			'users'		=> 'Users' ,
 			'logout'	=> 'Log out'
 		);
 	}

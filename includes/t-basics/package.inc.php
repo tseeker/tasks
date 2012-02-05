@@ -2,8 +2,8 @@
 
 $package[ 'requires' ][] = 'form';
 $package[ 'requires' ][] = 'hub-page';
-$package[ 'requires' ][] = 't-users';
 
+$package[ 'files' ][] = 'dao_users';
 $package[ 'files' ][] = 'controllers';
 $package[ 'files' ][] = 'pages';
 
@@ -20,3 +20,4 @@ $package[ 'pages' ][] = 'tasks_home';
 $package[ 'pages' ][] = 'tasks_login';
 $package[ 'pages' ][] = 'tasks_logout';
 
+$package[ 'daos' ][] = 'users';
