@@ -17,6 +17,7 @@ class Page_TasksTasks
 			'notes/edit'	=> 'edit_note_form' ,
 			'notes/delete'	=> 'delete_note_form' ,
 			'deps/add'	=> 'dependency_add_form' ,
+			'deps/delete'	=> 'dependency_delete_form' ,
 		));
 	}
 

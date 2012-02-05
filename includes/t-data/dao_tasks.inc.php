@@ -231,4 +231,10 @@ class DAO_Tasks
 		return $result[0]->error;
 	}
 
+	public function deleteDependency( $from , $to )
+	{
+		$this->query( 'DELETE FROM task_dependencies WHERE task_id = $1 AND task_id_depends = $2' )
+			->execute( $from , $to );
+	}
+
 }

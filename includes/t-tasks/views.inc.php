@@ -306,14 +306,26 @@ class View_TaskDependencies
 					->appendElement( $itemList ) );
 				$prevItem = $dependency->item;
 			}
-			$link = HTML::make( 'a' )
-				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $dependency->id )
-				->appendText( $dependency->title );
+
+			$entry = HTML::make( 'li' )->appendElement(
+				$link = HTML::make( 'a' )
+					->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $dependency->id )
+					->appendText( $dependency->title ) );
 			if ( ! $this->reverse ) {
 				$link->setAttribute( 'class' , ( $dependency->completed == 't' )
 					? 'satisfied' : 'missing' );
+
+				if ( $this->task->completed_at === null ) {
+					$entry->appendText( ' (' )
+						->appendElement( HTML::make( 'a' )
+							->setAttribute( 'href' , $this->base . '/tasks/deps/delete?from='
+								. $this->task->id . '&to=' . $dependency->id )
+							->appendText( 'remove') )
+						->appendText( ')' );
+				}
 			}
-			$itemList->appendElement( HTML::make( 'li' )->appendElement( $link ) );
+
+			$itemList->appendElement( $entry );
 		}
 		return $list;
 	}

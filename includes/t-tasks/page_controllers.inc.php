@@ -447,3 +447,73 @@ class Ctrl_DependencyAddForm
 		return $result;
 	}
 }
+
+
+class Ctrl_DependencyDeleteForm
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		$tasks = Loader::DAO( 'tasks' );
+
+		// Get the task a dependency is being removed from
+		try {
+			$from = (int) $this->getParameter( 'from' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+		$task = $tasks->get( $from );
+		if ( $task === null ) {
+			return 'tasks';
+		}
+		$page->setTitle( $task->title . ' (task)' );
+		if ( $task->completed_at !== null ) {
+			return 'tasks/view?id=' . $from;
+		}
+
+		// Get the dependency being deleted
+		try {
+			$to = (int) $this->getParameter( 'to' );
+		} catch ( ParameterException $e ) {
+			return 'tasks/view?id=' . $from;
+		}
+		$dependency = $tasks->get( $to );
+		if ( $dependency === null || ! $this->checkDependency( $task  , $to ) ) {
+			return 'tasks/view?id=' . $from;
+		}
+
+		// Generate confirmation text
+		$confText = HTML::make( 'div' )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'The selected task will no longer depend on ' )
+				->appendElement( HTML::make( 'strong' )
+					->appendText( $dependency->title ) )
+				->appendText( '.' ) );
+
+		// Generate form
+		return Loader::Create( 'Form' , 'Delete dependency' , 'delete-dep' )
+			->addField( Loader::Create( 'Field' , 'from' , 'hidden' )
+				->setDefaultValue( $from ) )
+			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
+				->setDefaultValue( $to ) )
+			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
+			->setURL( 'tasks/view?id=' . $from )
+			->addController( Loader::Ctrl( 'dependency_delete' ) )
+			->controller( );
+
+	}
+
+
+	private function checkDependency( $task , $to )
+	{
+		foreach ( $task->dependencies as $dep ) {
+			if ( $dep->id == $to ) {
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+

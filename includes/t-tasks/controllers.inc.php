@@ -385,3 +385,24 @@ class Ctrl_DependencyAdd
 		return null;
 	}
 }
+
+
+class Ctrl_DependencyDelete
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+	public function setForm( Form $form )
+	{
+		$this->form = $form;
+	}
+
+	public function handle( Page $page )
+	{
+		Loader::DAO( 'tasks' )->deleteDependency(
+			(int) $this->form->field( 'from' )->value( ) ,
+			(int) $this->form->field( 'to' )->value( ) );
+		return true;
+	}
+}
