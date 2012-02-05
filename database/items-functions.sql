@@ -50,7 +50,7 @@ $$ LANGUAGE plpgsql;
 
 
 -- Insert a item before another
-CREATE OR REPLACE FUNCTION insert_item_before( i_name TEXT , i_before INT )
+CREATE OR REPLACE FUNCTION insert_item_before( i_name TEXT , i_before INT , i_description TEXT )
 		RETURNS INT
 		STRICT VOLATILE
 		SECURITY DEFINER
@@ -68,9 +68,13 @@ BEGIN
 		RETURN 2;
 	END IF;
 
+	IF i_description = '' THEN
+		i_description := NULL;
+	END IF;
+
 	BEGIN
-		INSERT INTO items ( item_name , item_id_parent , item_ordering )
-			VALUES ( i_name , i_parent , i_ordering );
+		INSERT INTO items ( item_name , item_id_parent , item_ordering , item_description )
+			VALUES ( i_name , i_parent , i_ordering , i_description );
 	EXCEPTION
 		WHEN unique_violation THEN
 			RETURN 1;
@@ -80,9 +84,12 @@ BEGIN
 END;
 $insert_item_before$ LANGUAGE plpgsql;
 
+REVOKE EXECUTE ON FUNCTION insert_item_before( TEXT , INT , TEXT ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION insert_item_before( TEXT , INT , TEXT ) TO :webapp_user;
+
 
 -- Insert item as the last child of another
-CREATE OR REPLACE FUNCTION insert_item_under( i_name TEXT , i_parent INT )
+CREATE OR REPLACE FUNCTION insert_item_under( i_name TEXT , i_parent INT , i_description TEXT )
 		RETURNS INT
 		STRICT VOLATILE
 		SECURITY DEFINER
@@ -92,10 +99,14 @@ DECLARE
 BEGIN
 	PERFORM 1 FROM items FOR UPDATE;
 
+	IF i_description = '' THEN
+		i_description := NULL;
+	END IF;
+
 	SELECT INTO i_ordering max( item_ordering ) + 1 FROM items;
 	BEGIN
-		INSERT INTO items ( item_name , item_id_parent , item_ordering )
-			VALUES ( i_name , i_parent , i_ordering );
+		INSERT INTO items ( item_name , item_id_parent , item_ordering , item_description )
+			VALUES ( i_name , i_parent , i_ordering , i_description );
 	EXCEPTION
 		WHEN unique_violation THEN
 			RETURN 1;
@@ -107,9 +118,12 @@ BEGIN
 END;
 $insert_item_under$ LANGUAGE plpgsql;
 
+REVOKE EXECUTE ON FUNCTION insert_item_under( TEXT , INT , TEXT ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION insert_item_under( TEXT , INT , TEXT ) TO :webapp_user;
+
 
 -- Add a item as the last root element
-CREATE OR REPLACE FUNCTION insert_item_last( i_name TEXT )
+CREATE OR REPLACE FUNCTION insert_item_last( i_name TEXT , i_description TEXT )
 		RETURNS INT
 		STRICT VOLATILE
 		SECURITY DEFINER
@@ -123,9 +137,14 @@ BEGIN
 	IF i_ordering IS NULL THEN
 		i_ordering := 0;
 	END IF;
+
+	IF i_description = '' THEN
+		i_description := NULL;
+	END IF;
+
 	BEGIN
-		INSERT INTO items ( item_name , item_ordering )
-			VALUES ( i_name , i_ordering );
+		INSERT INTO items ( item_name , item_ordering , item_description )
+			VALUES ( i_name , i_ordering , i_description );
 	EXCEPTION
 		WHEN unique_violation THEN
 			RETURN 1;
@@ -135,21 +154,34 @@ BEGIN
 END;
 $insert_item_last$ LANGUAGE plpgsql;
 
+REVOKE EXECUTE ON FUNCTION insert_item_last( TEXT , TEXT ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION insert_item_last( TEXT , TEXT ) TO :webapp_user;
 
 -- Rename a item
-CREATE OR REPLACE FUNCTION rename_item( i_id INT , i_name TEXT )
+CREATE OR REPLACE FUNCTION update_item( i_id INT , i_name TEXT , i_description TEXT )
 		RETURNS INT
 		STRICT VOLATILE
 		SECURITY DEFINER
-	AS $rename_item$
+	AS $update_item$
 BEGIN
-	UPDATE items SET item_name = $2 WHERE item_id = $1;
+	IF i_description = '' THEN
+		i_description := NULL;
+	END IF;
+
+	UPDATE items
+		SET item_name = i_name ,
+			item_description = i_description
+		WHERE item_id = i_id;
+
 	RETURN 0;
 EXCEPTION
 	WHEN unique_violation THEN
 		RETURN 1;
 END
-$rename_item$ LANGUAGE plpgsql;
+$update_item$ LANGUAGE plpgsql;
+
+REVOKE EXECUTE ON FUNCTION update_item( INT , TEXT , TEXT ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION update_item( INT , TEXT , TEXT ) TO :webapp_user;
 
 
 

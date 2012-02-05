@@ -98,15 +98,16 @@ class Ctrl_AddItem
 	{
 		$name = $this->form->field( 'name' );
 		$before = $this->form->field( 'before' );
+		$description = $this->form->field( 'description' );
 		list( $after , $id ) = explode( ':' , $before->value( ) );
 
 		$items = Loader::DAO( 'items' );
 		if ( $id === '' ) {
-			$error = $items->createLast( $name->value( ) );
+			$error = $items->createLast( $name->value( ) , $description->value( ) );
 		} elseif ( $after == 1 ) {
-			$error = $items->createUnder( $name->value( ) , $id );
+			$error = $items->createUnder( $name->value( ) , $id , $description->value( ) );
 		} else {
-			$error = $items->createBefore( $name->value( ) , $id );
+			$error = $items->createBefore( $name->value( ) , $id , $description->value( ) );
 		}
 
 		switch ( $error ) {
@@ -234,22 +235,23 @@ class Ctrl_EditItem
 		$item = $items->get( $id );
 
 		$name = $this->form->field( 'name' );
-		if ( $name->value( ) === $item->name ) {
+		$description = $this->form->field( 'description' )->value( );
+		if ( $name->value( ) === $item->name && $description == $item->description ) {
 			return true;
 		}
 
-		$error = $items->rename( $id , $name->value( ) );
+		$error = $items->modify( $id , $name->value( ) , $description );
 		switch ( $error ) {
 
 		case 0:
 			return true;
 
 		case 1:
-			$name->putError( 'Ce nom n\'est pas unique' );
+			$name->putError( 'This name is not unique.' );
 			break;
 
 		default:
-			$name->putError( 'Une erreur inconnue s\'est produite (' . $error . ')' );
+			$name->putError( 'An unknown error occurred (' . $error . ')' );
 			break;
 
 		}

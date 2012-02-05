@@ -49,6 +49,12 @@ class Ctrl_AddItemForm
 				->setMandatory( false )
 				->setModifier( $locationField )
 				->setValidator( $locationField ) )
+			->addField( Loader::Create( 'Field' , 'description' , 'textarea' )
+				->setDescription( 'Description:' )
+				->setMandatory( false )
+				->setModifier( Loader::Create( 'Modifier_TrimString' ) )
+				->setValidator( Loader::Create( 'Validator_StringLength' ,
+					'This description' , 10 , null , true ) ) )
 			->addField( Loader::Create( 'Field' , 'from' , 'hidden' ) )
 			->addController( Loader::Ctrl( 'add_item' ) );
 
@@ -269,6 +275,13 @@ class Ctrl_EditItemForm
 				->setModifier( Loader::Create( 'Modifier_TrimString' ) )
 				->setValidator( Loader::Create( 'Validator_StringLength' , 'This name' , 2 , 128 ) )
 				->setDefaultValue( $item->name ) )
+			->addField( Loader::Create( 'Field' , 'description' , 'textarea' )
+				->setDescription( 'Description:' )
+				->setMandatory( false )
+				->setModifier( Loader::Create( 'Modifier_TrimString' ) )
+				->setValidator( Loader::Create( 'Validator_StringLength' ,
+					'This description' , 10 , null , true ) )
+				->setDefaultValue( $item->description ) )
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
 				->setDefaultValue( $item->id ) )
 			->addController( Loader::Ctrl( 'edit_item' ) )

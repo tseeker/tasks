@@ -10,26 +10,26 @@ class DAO_Items
 	private $activeTasksCounted = false;
 
 
-	public function createBefore( $name , $before )
+	public function createBefore( $name , $before , $description = '' )
 	{
-		$query = $this->query( 'SELECT insert_item_before( $1 , $2 ) AS error' );
-		$result = $query->execute( $name , $before );
+		$query = $this->query( 'SELECT insert_item_before( $1 , $2 , $3 ) AS error' );
+		$result = $query->execute( $name , $before , $description );
 		return $result[ 0 ]->error;
 	}
 
 
-	public function createUnder( $name , $under )
+	public function createUnder( $name , $under , $description = '' )
 	{
-		$query = $this->query( 'SELECT insert_item_under( $1 , $2 ) AS error' );
-		$result = $query->execute( $name , $under );
+		$query = $this->query( 'SELECT insert_item_under( $1 , $2 , $3 ) AS error' );
+		$result = $query->execute( $name , $under , $description );
 		return $result[ 0 ]->error;
 	}
 
 
-	public function createLast( $name )
+	public function createLast( $name , $description = '' )
 	{
-		$query = $this->query( 'SELECT insert_item_last( $1 ) AS error' );
-		$result = $query->execute( $name );
+		$query = $this->query( 'SELECT insert_item_last( $1 , $2 ) AS error' );
+		$result = $query->execute( $name , $description );
 		return $result[ 0 ]->error;
 	}
 
@@ -41,12 +41,13 @@ class DAO_Items
 			return $this->loaded[ $identifier ];
 		}
 
-		$getNameQuery = $this->query( 'SELECT item_name FROM items WHERE item_id = $1' , true );
+		$getNameQuery = $this->query( 'SELECT item_name , item_description FROM items WHERE item_id = $1' , true );
 		$result = $getNameQuery->execute( $identifier );
 		if ( empty( $result ) ) {
 			$rObj = null;
 		} else {
 			$rObj = new Data_Item( $identifier , $result[ 0 ]->item_name );
+			$rObj->description = $result[ 0 ]->item_description;
 		}
 		$this->loaded[ $identifier ] = $rObj;
 
@@ -61,7 +62,7 @@ class DAO_Items
 		}
 
 		$query = $this->query(
-			'SELECT p.item_id , p.item_name FROM items_tree pt '
+			'SELECT p.item_id , p.item_name , p.item_description FROM items_tree pt '
 			.	'INNER JOIN items p '
 			.		'ON p.item_id = pt.item_id_parent '
 			.	'WHERE pt.item_id_child = $1 AND pt.pt_depth > 0 '
@@ -74,6 +75,7 @@ class DAO_Items
 				$object = $this->loaded[ $entry->item_id ];
 			} else {
 				$object = new Data_Item( $entry->item_id , $entry->item_name );
+				$object->description = $entry->item_description;
 				$this->loaded[ $entry->item_id ] = $object;
 			}
 			$object->lineage = $stack;
@@ -87,7 +89,7 @@ class DAO_Items
 	private function loadTree( )
 	{
 		$query = $this->query(
-			'SELECT p.item_id , p.item_name , MAX( t.pt_depth ) as depth '
+			'SELECT p.item_id , p.item_name , p.item_description , MAX( t.pt_depth ) AS depth '
 				. 'FROM items p '
 					. 'INNER JOIN items_tree t ON t.item_id_child = p.item_id '
 				. 'GROUP BY p.item_id, p.item_name , p.item_ordering '
@@ -114,6 +116,7 @@ class DAO_Items
 				$object = $this->loaded[ $entry->item_id ];
 			} else {
 				$object = new Data_Item( $entry->item_id , $entry->item_name );
+				$object->description = $entry->item_description;
 				$this->loaded[ $entry->item_id ] = $object;
 			}
 			$object->children = array( );
@@ -172,7 +175,7 @@ class DAO_Items
 		}
 
 		$query = $this->query(
-			'SELECT p.item_id , p.item_name , COUNT(*) AS t_count '
+			'SELECT p.item_id , p.item_name , p.item_description , COUNT(*) AS t_count '
 			.	'FROM items p '
 			.		'INNER JOIN tasks t USING( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks c USING( task_id ) '
@@ -185,6 +188,7 @@ class DAO_Items
 				$object = $this->loaded[ $entry->item_id ];
 			} else {
 				$object = new Data_Item( $entry->item_id , $entry->item_name );
+				$object->description = $entry->item_description;
 				$this->loaded[ $entry->item_id ] = $object;
 			}
 			$object->activeTasks = $entry->t_count;
@@ -325,10 +329,10 @@ class DAO_Items
 	}
 
 
-	public function rename( $item , $name )
+	public function modify( $item , $name , $description = '' )
 	{
-		$result = $this->query( 'SELECT rename_item( $1 , $2 ) AS error' )
-			->execute( $item , $name );
+		$result = $this->query( 'SELECT update_item( $1 , $2 , $3 ) AS error' )
+			->execute( $item , $name , $description );
 		return $result[ 0 ]->error;
 	}
 }

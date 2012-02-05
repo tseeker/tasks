@@ -87,10 +87,18 @@ class View_ItemDetails
 			}
 		}
 
-		return HTML::make( 'dl' )
+		$details = HTML::make( 'dl' )
 			->appendElement( HTML::make( 'dt' )->appendText( 'Path:' ) )
 			->appendElement( HTML::make( 'dd' )
 				->setAttribute( 'style' , 'font-size: 10pt' )
 				->append( $contents ) );
+
+		if ( $this->item->description !== null ) {
+			$details->appendElement( HTML::make( 'dt' )->appendText( 'Description:' ) )
+				->appendElement( HTML::make( 'dd' )
+					->appendText( $this->item->description ) );
+		}
+
+		return $details;
 	}
 }

@@ -4,6 +4,7 @@ class Data_Item
 {
 	public $id;
 	public $name;
+	public $description;
 	public $hasParent;
 	public $parent;
 	public $children;

@@ -30,9 +30,10 @@ GRANT SELECT,UPDATE ON task_dependencies_taskdep_id_seq TO :webapp_user;
 --  Table items
 CREATE TABLE items (
 	item_id						INT NOT NULL DEFAULT NEXTVAL('items_item_id_seq'::TEXT),
-	item_name						VARCHAR(128) NOT NULL,
-	item_id_parent						INT,
-	item_ordering						INT NOT NULL,
+	item_name					VARCHAR(128) NOT NULL,
+	item_id_parent					INT,
+	item_ordering					INT NOT NULL,
+	item_description				TEXT ,
 	PRIMARY KEY(item_id)
 );
 
