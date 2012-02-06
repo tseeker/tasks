@@ -93,7 +93,8 @@ CREATE VIEW tasks_list
 			ct.completed_task_time AS completed_at,
 			u2.user_view_name AS completed_by ,
 			t.task_priority AS priority ,
-			bd.bad_deps AS missing_dependencies
+			bd.bad_deps AS missing_dependencies ,
+			mtd.trans_missing AS total_missing_dependencies
 		FROM tasks t
 			INNER JOIN users_view u1 ON u1.user_id = t.user_id
 			LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id
@@ -105,7 +106,16 @@ CREATE VIEW tasks_list
 							ON dct.task_id = td.task_id_depends
 					WHERE dct.task_id IS NULL
 					GROUP BY td.task_id
-				) AS bd ON bd.task_id = t.task_id;
+				) AS bd ON bd.task_id = t.task_id
+			LEFT OUTER JOIN (
+				SELECT tdn.task_id , COUNT( DISTINCT task_id_copyof ) AS trans_missing
+					FROM taskdep_nodes tdn
+						LEFT OUTER JOIN completed_tasks ct
+							ON ct.task_id = task_id_copyof
+					WHERE NOT tnode_reverse AND ct.task_id IS NULL
+						AND tdn.task_id <> tdn.task_id_copyof
+					GROUP BY tdn.task_id
+				) AS mtd ON mtd.task_id = t.task_id;
 
 GRANT SELECT ON tasks_list TO :webapp_user;
 

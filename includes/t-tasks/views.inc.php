@@ -87,7 +87,10 @@ class View_AllTasks
 				$end = 'y';
 			}
 			array_push( $cell ,
-				HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+				$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+			if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
+				$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
+			}
 
 			foreach ( $cell as $entry ) {
 				$entry->setAttribute( 'class' , 'missing-deps' );
@@ -160,7 +163,10 @@ class View_Tasks
 				$end = 'y';
 			}
 			array_push( $cell ,
-				HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+				$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+			if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
+				$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
+			}
 
 			foreach ( $cell as $entry ) {
 				$entry->setAttribute( 'class' , 'missing-deps' );
@@ -345,6 +351,13 @@ class View_TaskDependencies
 								. $this->task->id . '&to=' . $dependency->id )
 							->appendText( 'remove') )
 						->appendText( ')' );
+					if ( $dependency->missing_dependencies != 0 ) {
+						$end = $dependency->missing_dependencies > 1 ? 'ies' : 'y';
+						$entry->appendElement( HTML::make( 'ul' )
+							->appendElement( $mdeps = HTML::make( 'li' ) ) );
+						$mdeps->appendText( $dependency->missing_dependencies
+								. " missing dependenc$end (transitively)" );
+					}
 				}
 			}
 

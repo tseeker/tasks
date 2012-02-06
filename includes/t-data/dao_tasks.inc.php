@@ -27,7 +27,7 @@ class DAO_Tasks
 			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC' )->execute( );
+			.		'END ) DESC , total_missing_dependencies ASC NULLS FIRST , added_at DESC' )->execute( );
 	}
 
 	public function getAllActiveTasks( )
@@ -43,7 +43,7 @@ class DAO_Tasks
 		return $this->query(
 			'SELECT * FROM tasks_list '
 			.	'WHERE completed_at IS NULL AND missing_dependencies IS NOT NULL '
-			.	'ORDER BY priority DESC , missing_dependencies ASC , added_at DESC' )->execute( );
+			.	'ORDER BY priority DESC , total_missing_dependencies ASC , added_at DESC' )->execute( );
 	}
 
 
@@ -98,10 +98,12 @@ class DAO_Tasks
 		$task->dependencies = $this->query(
 			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
 			.		'i.item_name AS item_name , '
-			.		'( ct.completed_task_time IS NOT NULL ) AS completed '
+			.		'( ct.completed_task_time IS NOT NULL ) AS completed , '
+			.		'tl.total_missing_dependencies AS missing_dependencies '
 			.	'FROM task_dependencies td '
 			.		'INNER JOIN tasks t ON t.task_id = td.task_id_depends '
 			.		'INNER JOIN items i USING ( item_id ) '
+			.		'INNER JOIN tasks_list tl ON tl.id = t.task_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.	'WHERE td.task_id = $1 '
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
