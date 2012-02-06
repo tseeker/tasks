@@ -76,12 +76,14 @@ class DAO_Tasks
 			'SELECT t.task_id AS id, t.task_title AS title, t.item_id AS item ,'
 			.		't.task_description AS description, t.task_added AS added_at, '
 			.		'u1.user_view_name AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_view_name AS completed_by, t.user_id AS uid , '
+			.		'u2.user_view_name AS assigned_to , u2.user_id AS assigned_id , '
+			.		'u3.user_view_name AS completed_by, t.user_id AS uid , '
 			.		't.task_priority AS priority '
 			.	'FROM tasks t '
 			.		'INNER JOIN users_view u1 ON u1.user_id = t.user_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN users_view u2 ON u2.user_id = ct.user_id '
+			.		'LEFT OUTER JOIN users_view u2 ON u2.user_id = t.user_id_assigned '
+			.		'LEFT OUTER JOIN users_view u3 ON u3.user_id = ct.user_id '
 			.	'WHERE t.task_id = $1' )->execute( $id );
 		if ( empty( $result ) ) {
 			return null;
@@ -182,10 +184,10 @@ class DAO_Tasks
 			->execute( $task , $_SESSION[ 'uid' ] , $noteText );
 	}
 
-	public function updateTask( $id , $item , $title , $priority , $description )
+	public function updateTask( $id , $item , $title , $priority , $description , $assignee )
 	{
-		$result = $this->query( 'SELECT update_task( $1 , $2 , $3 , $4 , $5 ) AS error' )
-			->execute( $id , $item , $title , $description , $priority );
+		$result = $this->query( 'SELECT update_task( $1 , $2 , $3 , $4 , $5 , $6 ) AS error' )
+			->execute( $id , $item , $title , $description , $priority , $assignee );
 		return $result[0]->error;
 	}
 
@@ -236,4 +238,14 @@ class DAO_Tasks
 			->execute( $from , $to );
 	}
 
+	public function assignTaskTo( $task , $user )
+	{
+		$this->query(
+			'UPDATE tasks _task SET user_id_assigned = $2 '
+			.	'FROM tasks _task2 '
+			.		'LEFT OUTER JOIN completed_tasks _completed '
+			.			'USING ( task_id ) '
+			.	'WHERE _task2.task_id = _task.task_id AND _completed.task_id IS NULL AND _task.task_id = $1'
+		)->execute( $task , $user );
+	}
 }

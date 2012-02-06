@@ -233,6 +233,9 @@ class Ctrl_EditTaskForm
 		if ( $task === null ) {
 			return 'tasks';
 		}
+		if ( $task->completed_at !== null ) {
+			return 'tasks/view?id=' . $id;
+		}
 		$page->setTitle( $task->title . ' (task)' );
 
 
@@ -253,6 +256,8 @@ class Ctrl_EditTaskForm
 				->setDescription( 'Description:' )
 				->setMandatory( false )
 				->setDefaultValue( $task->description ) )
+			->addField( $this->createAssigneeSelector( )
+				->setDefaultValue( $task->assigned_id ) )
 			->addController( Loader::Ctrl( 'edit_task' ) )
 			->controller( );
 	}
@@ -263,13 +268,29 @@ class Ctrl_EditTaskForm
 		$select = Loader::Create( 'Field' , 'item' , 'select' )
 			->setDescription( 'On item:' );
 
-		$items =  Loader::DAO( 'items' )->getTreeList( );
+		$items = Loader::DAO( 'items' )->getTreeList( );
 		foreach ( $items as $item ) {
 			$name = '-' . str_repeat( '--' , $item->depth ) . ' ' . $item->name;
 			$select->addOption( $item->id , $name );
 		}
 		return $select;
 
+	}
+
+
+	private function createAssigneeSelector( )
+	{
+		$select = Loader::Create( 'Field' , 'assigned-to' , 'select' )
+			->setDescription( 'Assigned to:' )
+			->setMandatory( false );
+		$select->addOption( '' , '(unassigned task)' );
+
+		$users = Loader::DAO( 'users' )->getUsers( );
+		foreach ( $users as $user ) {
+			$select->addOption( $user->user_id , $user->user_view_name );
+		}
+
+		return $select;
 	}
 }
 

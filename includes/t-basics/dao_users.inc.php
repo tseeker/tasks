@@ -38,8 +38,8 @@ class Dao_Users
 	public function getUsers( )
 	{
 		return $this->query( 
-			'SELECT user_id , user_display_name , user_email '
-			.	'FROM users '
+			'SELECT user_id , user_display_name , user_email , user_view_name '
+			.	'FROM users_view '
 			.	'ORDER BY LOWER( user_email )' )->execute( );
 	}
 

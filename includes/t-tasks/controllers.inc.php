@@ -71,10 +71,16 @@ class Ctrl_TaskDetails
 		if ( $this->task->completed_by === null ) {
 			$box->addButton( BoxButton::create( 'Edit task' , 'tasks/edit?id=' . $this->task->id )
 					->setClass( 'icon edit' ) );
+
 			if ( $tasks->canFinish( $this->task ) ) {
 				$box->addButton( BoxButton::create( 'Mark as completed' , 'tasks/finish?id=' . $this->task->id )
 						->setClass( 'icon stop' ) );
-			};
+			}
+
+			if ( $this->task->assigned_id !== $_SESSION[ 'uid' ] ) {
+				$box->addButton( BoxButton::create( 'Claim task' , 'tasks/claim?id=' . $this->task->id )
+						->setClass( 'icon claim' ) );
+			}
 		} else {
 			if ( $tasks->canRestart( $this->task ) ) {
 				$box->addButton( BoxButton::create( 'Re-activate' , 'tasks/restart?id=' . $this->task->id )
@@ -228,10 +234,12 @@ class Ctrl_EditTask
 		$name = $this->form->field( 'title' );
 		$priority = $this->form->field( 'priority' );
 		$description = $this->form->field( 'description' );
+		$assignee = $this->form->field( 'assigned-to' );
 
 		$error = Loader::DAO( 'tasks' )->updateTask( (int) $id->value( ) ,
 			(int) $item->value( ) , $name->value( ) ,
-			(int) $priority->value( ) , $description->value( ) );
+			(int) $priority->value( ) , $description->value( ) ,
+			(int) $assignee->value( ) );
 
 		switch ( $error ) {
 
@@ -239,11 +247,15 @@ class Ctrl_EditTask
 			return true;
 
 		case 1:
-			$name->putError( "A task already uses this title for this item." );
+			$name->putError( 'A task already uses this title for this item.' );
 			break;
 
 		case 2:
-			$item->putError( "This item has been deleted." );
+			$item->putError( 'This item has been deleted.' );
+			break;
+
+		case 3:
+			$assignee->putError( 'This user has been deleted.' );
 			break;
 
 		default:
@@ -405,4 +417,24 @@ class Ctrl_DependencyDelete
 			(int) $this->form->field( 'to' )->value( ) );
 		return true;
 	}
+}
+
+
+class Ctrl_TaskClaim
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		try {
+			$id = (int) $this->getParameter( 'id' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+
+		$dao = Loader::DAO( 'tasks' );
+		$dao->assignTaskTo( $id , $_SESSION[ 'uid' ] );
+		return 'tasks/view?id=' . $id;
+	}
+
 }

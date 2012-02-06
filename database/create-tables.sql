@@ -77,6 +77,7 @@ CREATE TABLE tasks (
 	task_description					TEXT NOT NULL,
 	task_added						TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
 	user_id							INT NOT NULL REFERENCES users(user_id) ON UPDATE NO ACTION ON DELETE CASCADE,
+	user_id_assigned					INT REFERENCES users(user_id) ON UPDATE NO ACTION ON DELETE SET NULL ,
 	PRIMARY KEY(task_id)
 );
 

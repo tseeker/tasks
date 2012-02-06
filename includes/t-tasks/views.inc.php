@@ -51,20 +51,6 @@ abstract class View_TasksBase
 		return $result;
 	}
 
-	protected abstract function generateItem( $task );
-}
-
-
-class View_AllTasks
-	extends View_TasksBase
-{
-
-	public function __construct( $tasks )
-	{
-		parent::__construct( );
-		$this->tasks = $tasks;
-	}
-
 	protected function generateItem( $task )
 	{
 		$cell = array( );
@@ -72,8 +58,7 @@ class View_AllTasks
 			->appendElement( HTML::make( 'a' )
 				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $task->id )
 				->appendText( $task->title ) ) );
-
-		array_push( $cell , HTML::make( 'dd' )->append( $this->formatPlaceLineage( $task->item ) ) );
+		$cell = array_merge( $cell , $this->generateSpecificLines( $task ) );
 
 		$addedAt = strtotime( $task->added_at );
 		$addedAtDate = date( 'd/m/o' , $addedAt );
@@ -95,6 +80,11 @@ class View_AllTasks
 			foreach ( $cell as $entry ) {
 				$entry->setAttribute( 'class' , 'missing-deps' );
 			}
+		} elseif ( $task->assigned_to !== null ) {
+			array_push( $cell , HTML::make( 'dd' )->appendText( 'Assigned to ' . $task->assigned_to ) );
+			foreach ( $cell as $entry ) {
+				$entry->setAttribute( 'class' , 'assigned' );
+			}
 		} elseif ( $task->completed_by !== null ) {
 			$completedAt = strtotime( $task->completed_at );
 			$completedAtDate = date( 'd/m/o' , $completedAt );
@@ -108,6 +98,25 @@ class View_AllTasks
 		}
 
 		return $cell;
+	}
+
+	protected abstract function generateSpecificLines( $task );
+}
+
+
+class View_AllTasks
+	extends View_TasksBase
+{
+
+	public function __construct( $tasks )
+	{
+		parent::__construct( );
+		$this->tasks = $tasks;
+	}
+
+	protected function generateSpecificLines( $task )
+	{
+		return array( HTML::make( 'dd' )->append( $this->formatPlaceLineage( $task->item ) ) );
 	}
 
 	private function formatPlaceLineage( $item )
@@ -142,47 +151,9 @@ class View_Tasks
 	}
 
 
-	protected function generateItem( $task )
+	protected function generateSpecificLines( $task )
 	{
-		$cell = array( );
-		array_push( $cell , HTML::make( 'dt' )
-			->appendElement( HTML::make( 'a' )
-				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $task->id )
-				->appendText( $task->title ) ) );
-
-		$addedAt = strtotime( $task->added_at );
-		$addedAtDate = date( 'd/m/o' , $addedAt );
-		$addedAtTime = date( 'H:i:s' , $addedAt );
-		array_push( $cell ,
-			HTML::make( 'dd' )->appendText( "Added $addedAtDate at $addedAtTime by {$task->added_by}" ) );
-
-		if ( $task->missing_dependencies !== null ) {
-			if ( $task->missing_dependencies > 1 ) {
-				$end = 'ies';
-			} else {
-				$end = 'y';
-			}
-			array_push( $cell ,
-				$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
-			if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
-				$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
-			}
-
-			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , 'missing-deps' );
-			}
-		} elseif ( $task->completed_by !== null ) {
-			$completedAt = strtotime( $task->completed_at );
-			$completedAtDate = date( 'd/m/o' , $completedAt );
-			$completedAtTime = date( 'H:i:s' , $completedAt );
-			array_push( $cell , HTML::make( 'dd' )->appendText(
-				"Completed $completedAtDate at $completedAtTime by {$task->completed_by}" ) );
-			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , 'completed' );
-			}
-		}
-
-		return $cell;
+		return array( );
 	}
 
 }
@@ -225,6 +196,17 @@ class View_TaskDetails
 				->appendElement( HTML::make( 'dd' )
 					->appendText( Loader::DAO( 'tasks' )
 						->translatePriority( $this->task->priority ) ) );
+
+			if ( $this->task->assigned_to === null ) {
+				$list->appendElement( HTML::make( 'dt' )
+					->setAttribute( 'class' , 'unassigned-task' )
+					->appendText( 'Unassigned!' ) );
+			} else {
+				$list->appendElement( HTML::make( 'dt' )
+						->appendText( 'Assigned to:' ) )
+					->appendElement( HTML::make( 'dd' )
+						->appendText( $this->task->assigned_to ) );
+			}
 		} else {
 			$list->appendElement( HTML::make( 'dt' )
 					->appendText( 'Completed:' ) )

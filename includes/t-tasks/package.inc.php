@@ -28,6 +28,7 @@ $package[ 'ctrls' ][] = 'edit_task_form';
 $package[ 'ctrls' ][] = 'edit_task';
 $package[ 'ctrls' ][] = 'task_dependencies';
 $package[ 'ctrls' ][] = 'task_details';
+$package[ 'ctrls' ][] = 'task_claim';
 $package[ 'ctrls' ][] = 'task_notes';
 $package[ 'ctrls' ][] = 'toggle_task';
 $package[ 'ctrls' ][] = 'view_task';

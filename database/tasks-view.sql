@@ -10,14 +10,16 @@ CREATE VIEW tasks_list
 			t.task_description AS description, t.task_added AS added_at,
 			u1.user_view_name AS added_by,
 			ct.completed_task_time AS completed_at,
-			u2.user_view_name AS completed_by ,
+			u2.user_view_name AS assigned_to ,
+			u3.user_view_name AS completed_by ,
 			t.task_priority AS priority ,
 			bd.bad_deps AS missing_dependencies ,
 			mtd.trans_missing AS total_missing_dependencies
 		FROM tasks t
 			INNER JOIN users_view u1 ON u1.user_id = t.user_id
 			LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id
-			LEFT OUTER JOIN users_view u2 ON u2.user_id = ct.user_id
+			LEFT OUTER JOIN users_view u2 ON u2.user_id = t.user_id_assigned
+			LEFT OUTER JOIN users_view u3 ON u3.user_id = ct.user_id
 			LEFT OUTER JOIN (
 				SELECT td.task_id , COUNT(*) AS bad_deps
 					FROM task_dependencies td

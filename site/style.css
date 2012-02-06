@@ -357,6 +357,9 @@ div.box-buttons a.stop:hover { background-position: -18px -72px }
 div.box-buttons a.start { background-position: 0px -90px }
 div.box-buttons a.start:hover { background-position: -18px -90px }
 
+div.box-buttons a.claim { background-position: 0px -108px }
+div.box-buttons a.claim:hover { background-position: -18px -108px }
+
 div.box-buttons a.list-add::after {
 	content: '+';
 	font-weight: bold;
@@ -393,6 +396,10 @@ dl.tasks .missing-deps, dl.tasks .missing-deps * {
 	color: #7f3f3f
 }
 
+dl.tasks .assigned, dl.tasks .assigned * {
+	color: #1f7f1f
+}
+
 dl.tasks dt.sub-title.completed {
 	color: #bfbfbf;
 	text-shadow: 1px 1px 2px #3f3f3f;
@@ -404,4 +411,9 @@ ul.dep-list a.missing {
 
 ul.dep-list a.satisfied {
 	color: green;
+}
+
+dt.unassigned-task {
+	color: #7f3f3f;
+	font-style: italic;
 }

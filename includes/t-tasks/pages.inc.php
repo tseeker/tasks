@@ -9,6 +9,7 @@ class Page_TasksTasks
 		parent::__construct( array(
 			''		=> 'all_tasks' ,
 			'add'		=> 'add_task_form' ,
+			'claim'		=> 'task_claim' ,
 			'delete'	=> 'delete_task_form' ,
 			'edit'		=> 'edit_task_form' ,
 			'finish'	=> array( 'toggle_task' , false ) ,
