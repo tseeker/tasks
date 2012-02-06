@@ -21,102 +21,44 @@ class DAO_Tasks
 	public function getAllTasks( )
 	{
 		return $this->query(
-			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
-			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_email AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_email AS completed_by , t.task_priority AS priority , '
-			.		'bd.bad_deps AS missing_dependencies '
-			.	'FROM tasks t '
-			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
-			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN users u2 ON u2.user_id = ct.user_id '
-			.		'LEFT OUTER JOIN ('
-			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
-			.				'FROM task_dependencies td '
-			.					'LEFT OUTER JOIN completed_tasks dct '
-			.						'ON dct.task_id = td.task_id_depends '
-			.				'WHERE dct.task_id IS NULL '
-			.				'GROUP BY td.task_id'
-			.			') AS bd ON bd.task_id = t.task_id '
+			'SELECT * FROM tasks_list '
 			.	'ORDER BY ( CASE '
-			.			'WHEN ct.task_id IS NULL THEN '
-			.				't.task_priority '
+			.			'WHEN completed_at IS NULL THEN '
+			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , bd.bad_deps ASC NULLS FIRST , t.task_added DESC' )->execute( );
+			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC' )->execute( );
 	}
 
 	public function getAllActiveTasks( )
 	{
 		return $this->query(
-			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
-			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_email AS added_by, NULL AS completed_at, NULL AS completed_by , '
-			.		't.task_priority AS priority , NULL::INT AS missing_dependencies '
-			.	'FROM tasks t '
-			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
-			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN ('
-			.			'SELECT td.task_id , td.task_id_depends AS bad_dep '
-			.				'FROM task_dependencies td '
-			.					'LEFT OUTER JOIN completed_tasks dct '
-			.						'ON dct.task_id = td.task_id_depends '
-			.				'WHERE dct.task_id IS NULL'
-			.			') AS bd ON bd.task_id = t.task_id '
-			.	'WHERE ct.task_id IS NULL AND bd.bad_dep IS NULL '
-			.	'ORDER BY t.task_priority DESC , t.task_added DESC' )->execute( );
+			'SELECT * FROM tasks_list '
+			.	'WHERE completed_at IS NULL AND missing_dependencies IS NULL '
+			.	'ORDER BY priority DESC , added_at DESC' )->execute( );
 	}
 
 	public function getAllBlockedTasks( )
 	{
 		return $this->query(
-			'SELECT t.task_id AS id, t.item_id AS item, t.task_title AS title, '
-			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_email AS added_by, NULL AS completed_at, NULL AS completed_by , '
-			.		't.task_priority AS priority , bd.bad_deps AS missing_dependencies '
-			.	'FROM tasks t '
-			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
-			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN ('
-			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
-			.				'FROM task_dependencies td '
-			.					'LEFT OUTER JOIN completed_tasks dct '
-			.						'ON dct.task_id = td.task_id_depends '
-			.				'WHERE dct.task_id IS NULL '
-			.				'GROUP BY td.task_id'
-			.			') AS bd ON bd.task_id = t.task_id '
-			.	'WHERE ct.task_id IS NULL AND bd.bad_deps <> 0 '
-			.	'ORDER BY t.task_priority DESC , bd.bad_deps DESC , t.task_added DESC' )->execute( );
+			'SELECT * FROM tasks_list '
+			.	'WHERE completed_at IS NULL AND missing_dependencies IS NOT NULL '
+			.	'ORDER BY priority DESC , missing_dependencies ASC , added_at DESC' )->execute( );
 	}
 
 
 	public function getTasksAt( Data_Item $item )
 	{
 		return $this->query(
-			'SELECT t.task_id AS id, t.task_title AS title, '
-			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_email AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_email AS completed_by , t.task_priority AS priority , '
-			.		'bd.bad_deps AS missing_dependencies '
-			.	'FROM tasks t '
-			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
-			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN users u2 ON u2.user_id = ct.user_id '
-			.		'LEFT OUTER JOIN ('
-			.			'SELECT td.task_id , COUNT(*) AS bad_deps '
-			.				'FROM task_dependencies td '
-			.					'LEFT OUTER JOIN completed_tasks dct '
-			.						'ON dct.task_id = td.task_id_depends '
-			.				'WHERE dct.task_id IS NULL '
-			.				'GROUP BY td.task_id'
-			.			') AS bd ON bd.task_id = t.task_id '
-			.	'WHERE t.item_id = $1'
+			'SELECT * FROM tasks_list '
+			.	'WHERE item = $1 '
 			.	'ORDER BY ( CASE '
-			.			'WHEN ct.task_id IS NULL THEN '
-			.				't.task_priority '
+			.			'WHEN completed_at IS NULL THEN '
+			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , bd.bad_deps ASC NULLS FIRST , t.task_added DESC' )->execute( $item->id );
+			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+		)->execute( $item->id );
 	}
 
 
@@ -133,13 +75,13 @@ class DAO_Tasks
 		$result = $this->query(
 			'SELECT t.task_id AS id, t.task_title AS title, t.item_id AS item ,'
 			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_email AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_email AS completed_by, t.user_id AS uid , '
+			.		'u1.user_view_name AS added_by, ct.completed_task_time AS completed_at, '
+			.		'u2.user_view_name AS completed_by, t.user_id AS uid , '
 			.		't.task_priority AS priority '
 			.	'FROM tasks t '
-			.		'INNER JOIN users u1 ON u1.user_id = t.user_id '
+			.		'INNER JOIN users_view u1 ON u1.user_id = t.user_id '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN users u2 ON u2.user_id = ct.user_id '
+			.		'LEFT OUTER JOIN users_view u2 ON u2.user_id = ct.user_id '
 			.	'WHERE t.task_id = $1' )->execute( $id );
 		if ( empty( $result ) ) {
 			return null;
@@ -147,10 +89,10 @@ class DAO_Tasks
 
 		$task = $result[ 0 ];
 		$task->notes = $this->query(
-			'SELECT n.note_id AS id , n.user_id AS uid , u.user_email AS author , '
+			'SELECT n.note_id AS id , n.user_id AS uid , u.user_view_name AS author , '
 			.		'n.note_added AS added_at , n.note_text AS "text" '
 			.	'FROM notes n '
-			.		'INNER JOIN users u USING (user_id) '
+			.		'INNER JOIN users_view u USING (user_id) '
 			.	'WHERE n.task_id = $1 '
 			.	'ORDER BY n.note_added DESC' )->execute( $id );
 		$task->dependencies = $this->query(

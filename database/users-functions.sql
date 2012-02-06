@@ -23,3 +23,21 @@ $users_add$;
 
 REVOKE EXECUTE ON FUNCTION users_add( TEXT , TEXT , INT , TEXT , TEXT ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION users_add( TEXT , TEXT , INT , TEXT , TEXT) TO :webapp_user;
+
+
+
+--
+-- View that lists users and adds the string to use when displaying
+--
+
+DROP VIEW IF EXISTS users_view;
+CREATE VIEW users_view
+	AS SELECT * , ( CASE
+			WHEN user_display_name IS NULL THEN
+				user_email
+			ELSE
+				user_display_name
+			END ) AS user_view_name
+		FROM users;
+
+GRANT SELECT ON users_view TO :webapp_user;
