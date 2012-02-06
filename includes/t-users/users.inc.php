@@ -52,6 +52,11 @@ class Ctrl_UsersAddForm
 					->setValidator( Loader::Create( 'Validator_StringLength' , 'This password' , 8 ) ) )
 			->addField( Loader::Create( 'Field' , 'pass2' , 'password' )
 					->setDescription( 'Confirm password:' ) )
+			->addField( Loader::Create( 'Field' , 'display-name' , 'text' )
+					->setDescription( 'Display name:' )
+					->setMandatory( false )
+					->setValidator( Loader::Create( 'Validator_StringLength' , 'This display name',
+										5 , 256 , true ) ) )
 			->addController( Loader::Ctrl( 'users_add' , $this->initial ) );
 
 		if ( $this->initial ) {
@@ -94,8 +99,9 @@ class Ctrl_UsersAdd
 		}
 
 		$email = $this->form->field( 'email' );
+		$name = $this->form->field( 'display-name' );
 		$error = Loader::DAO( 'users' )->addUser( $email->value( ) ,
-			$p1->value( ) );
+			$p1->value( ) , $name->value( ) );
 
 		switch ( $error ) {
 
@@ -137,14 +143,31 @@ class View_UsersList
 			->appendElement( HTML::make( 'tr' )
 				->setAttribute( 'class' , 'header' )
 				->appendElement( HTML::make( 'th' )
-					->appendText( 'E-mail address' ) ) );
+					->appendText( 'E-mail address' ) )
+				->appendElement( HTML::make( 'th' )
+					->appendText( 'Display name' ) ) );
 
 		foreach ( $this->users as $user ) {
-			$table->appendElement( HTML::make( 'tr' )
-				->appendElement( HTML::make( 'td' )
-					->appendText( $user->user_email ) ) );
+			$table->appendElement( $this->makeUserRow( $user ) );
 		}
 
 		return $table;
+	}
+
+	private function makeUserRow( $user )
+	{
+		$row = HTML::make( 'tr' )
+			->appendElement( HTML::make( 'td' )
+				->appendText( $user->user_email ) );
+
+		$nameColumn = HTML::make( 'td' );
+		if ( $user->user_display_name !== null ) {
+			$nameColumn->appendText( $user->user_display_name );
+		} else {
+			$nameColumn->appendElement( HTML::make( 'em' )->appendText( 'N/A' ) );
+		}
+		$row->appendElement( $nameColumn );
+
+		return $row;
 	}
 }

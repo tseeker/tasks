@@ -56,6 +56,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON items TO :webapp_user;
 CREATE TABLE users (
 	user_id							INT NOT NULL DEFAULT NEXTVAL('users_user_id_seq'::TEXT),
 	user_email						VARCHAR(256) NOT NULL,
+	user_display_name					VARCHAR(256) ,
 	user_salt						CHAR(8) NOT NULL,
 	user_iterations						INT NOT NULL,
 	user_hash						CHAR(40) NOT NULL,

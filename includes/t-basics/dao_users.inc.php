@@ -18,7 +18,10 @@ class Dao_Users
 
 	public function getUsers( )
 	{
-		return $this->query( 'SELECT user_id , user_email FROM users ORDER BY LOWER( user_email )' )->execute( );
+		return $this->query( 
+			'SELECT user_id , user_display_name , user_email '
+			.	'FROM users '
+			.	'ORDER BY LOWER( user_email )' )->execute( );
 	}
 
 
@@ -48,7 +51,7 @@ class Dao_Users
 	}
 
 
-	public function addUser( $email , $password )
+	public function addUser( $email , $password , $name )
 	{
 		$iterations = rand( 130 , 160 );
 
@@ -65,8 +68,8 @@ class Dao_Users
 
 		$hash = $this->hashPassword( $password , $salt , $iterations );
 
-		$result = $this->query( 'SELECT users_add( $1 , $2 , $3 , $4 ) AS error' )
-			->execute( $email , $salt , $iterations , $hash );
+		$result = $this->query( 'SELECT users_add( $1 , $2 , $3 , $4 , $5 ) AS error' )
+			->execute( $email , $salt , $iterations , $hash , $name );
 		return $result[ 0 ]->error;
 	}
 
