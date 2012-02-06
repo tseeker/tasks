@@ -11,6 +11,7 @@ CREATE VIEW tasks_list
 			u1.user_view_name AS added_by,
 			ct.completed_task_time AS completed_at,
 			u2.user_view_name AS assigned_to ,
+			u2.user_id AS assigned_to_id ,
 			u3.user_view_name AS completed_by ,
 			t.task_priority AS priority ,
 			bd.bad_deps AS missing_dependencies ,

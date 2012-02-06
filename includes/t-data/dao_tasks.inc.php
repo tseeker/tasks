@@ -62,6 +62,16 @@ class DAO_Tasks
 	}
 
 
+	public function getUserTasks( $user )
+	{
+		return $this->query(
+			'SELECT * FROM tasks_list '
+			.	'WHERE assigned_to_id = $1 '
+			.	'ORDER BY priority DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+		)->execute( $user->user_id );
+	}
+
+
 	public function addTask( $item , $title , $priority , $description )
 	{
 		$result = $this->query( 'SELECT add_task( $1 , $2 , $3 , $4 , $5 ) AS error' )

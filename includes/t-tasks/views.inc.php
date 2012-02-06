@@ -95,8 +95,9 @@ class View_TasksList
 			return;
 		}
 
-		$item = Loader::DAO( 'items' )->get( $task->item );
-		$lineage = $item->lineage;
+		$itemsDao = Loader::DAO( 'items' );
+		$item = $itemsDao->get( $task->item );
+		$lineage = $itemsDao->getLineage( $item );
 		array_push( $lineage , $item->id );
 
 		$contents = array( );

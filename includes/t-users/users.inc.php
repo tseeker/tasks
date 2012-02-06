@@ -100,11 +100,14 @@ class Ctrl_UsersView
 			return 'users';
 		}
 
-		$page->setTitle( 'User ' . $user->user_view_name );
+		$page->setTitle( $user->user_view_name );
 
-		return Loader::View( 'box' , 'User information' , Loader::View( 'users_view' , $user ) )
-			->addButton( BoxButton::create( 'Edit user' , 'users/edit?id=' . $id )
-				->setClass( 'icon edit' ) );
+		return array(
+		       	Loader::View( 'box' , 'User information' , Loader::View( 'users_view' , $user ) )
+				->addButton( BoxButton::create( 'Edit user' , 'users/edit?id=' . $id )
+					->setClass( 'icon edit' ) ) ,
+			Loader::View( 'box' , 'Assigned tasks' , Loader::View( 'tasks_list' ,
+						Loader::DAO( 'tasks' )->getUserTasks( $user ) , array( 'deps' , 'item' ) ) ) );
 	}
 
 }
