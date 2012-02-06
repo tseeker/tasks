@@ -399,6 +399,9 @@ dl.tasks .missing-deps, dl.tasks .missing-deps * {
 dl.tasks .assigned, dl.tasks .assigned * {
 	color: #1f7f1f
 }
+dl.tasks .missing-deps.assigned, dl.tasks .missing-deps.assigned * {
+	color: #7f7f1f
+}
 
 dl.tasks dt.sub-title.completed {
 	color: #bfbfbf;

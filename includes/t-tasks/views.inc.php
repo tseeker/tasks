@@ -1,14 +1,16 @@
 <?php
 
-abstract class View_TasksBase
+class View_TasksList
 	extends BaseURLAwareView
 {
 	protected $tasks;
 	protected $dao;
 
 
-	protected function __construct( )
+	public function __construct( $tasks , $features = array( 'item' , 'assigned' , 'deps' , 'completed' ) )
 	{
+		$this->tasks = $tasks;
+		$this->features = array_combine( $features , array_fill( 0 , count( $features ) , 1 ) );
 		$this->dao = Loader::DAO( 'tasks' );
 	}
 
@@ -58,70 +60,42 @@ abstract class View_TasksBase
 			->appendElement( HTML::make( 'a' )
 				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $task->id )
 				->appendText( $task->title ) ) );
-		$cell = array_merge( $cell , $this->generateSpecificLines( $task ) );
+		$this->addItem( $cell , $task );
+		$classes = array( );
 
 		$addedAt = strtotime( $task->added_at );
 		$addedAtDate = date( 'd/m/o' , $addedAt );
 		$addedAtTime = date( 'H:i:s' , $addedAt );
 		array_push( $cell ,
 			HTML::make( 'dd' )->appendText( "Added $addedAtDate at $addedAtTime by {$task->added_by}" ) );
-		if ( $task->missing_dependencies !== null ) {
-			if ( $task->missing_dependencies > 1 ) {
-				$end = 'ies';
-			} else {
-				$end = 'y';
-			}
-			array_push( $cell ,
-				$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
-			if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
-				$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
-			}
 
-			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , 'missing-deps' );
+		if ( $task->completed_by !== null ) {
+			$this->generateCompletedTask( $cell , $classes , $task );
+		} else {
+			if ( $task->missing_dependencies !== null ) {
+				$this->generateMissingDependencies( $cell , $classes , $task );
 			}
-		} elseif ( $task->assigned_to !== null ) {
-			array_push( $cell , HTML::make( 'dd' )->appendText( 'Assigned to ' . $task->assigned_to ) );
-			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , 'assigned' );
+			if ( $task->assigned_to !== null ) {
+				$this->generateAssignedTask( $cell , $classes , $task );
 			}
-		} elseif ( $task->completed_by !== null ) {
-			$completedAt = strtotime( $task->completed_at );
-			$completedAtDate = date( 'd/m/o' , $completedAt );
-			$completedAtTime = date( 'H:i:s' , $completedAt );
-			array_push( $cell , HTML::make( 'dd' )->appendText(
-				"Completed $completedAtDate at $completedAtTime by {$task->completed_by}" ) );
+		}
 
+		if ( ! empty( $classes ) ) {
 			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , 'completed' );
+				$entry->setAttribute( 'class' , join( ' ' , $classes ) );
 			}
 		}
 
 		return $cell;
 	}
 
-	protected abstract function generateSpecificLines( $task );
-}
-
-
-class View_AllTasks
-	extends View_TasksBase
-{
-
-	public function __construct( $tasks )
+	protected function addItem( &$cell , $task )
 	{
-		parent::__construct( );
-		$this->tasks = $tasks;
-	}
+		if ( ! array_key_exists( 'item' , $this->features ) ) {
+			return;
+		}
 
-	protected function generateSpecificLines( $task )
-	{
-		return array( HTML::make( 'dd' )->append( $this->formatPlaceLineage( $task->item ) ) );
-	}
-
-	private function formatPlaceLineage( $item )
-	{
-		$item = Loader::DAO( 'items' )->get( $item );
+		$item = Loader::DAO( 'items' )->get( $task->item );
 		$lineage = $item->lineage;
 		array_push( $lineage , $item->id );
 
@@ -136,26 +110,52 @@ class View_AllTasks
 		}
 		array_unshift( $contents, 'On ' );
 
-		return $contents;
+		array_push( $cell , HTML::make( 'dd' )->append( $contents ) );
 	}
-}
 
-
-class View_Tasks
-	extends View_TasksBase
-{
-	public function __construct( $tasks )
+	protected function generateMissingDependencies( &$cell , &$classes , $task )
 	{
-		parent::__construct( );
-		$this->tasks = $tasks;
+		if ( ! array_key_exists( 'deps' , $this->features ) ) {
+			return;
+		}
+
+		if ( $task->missing_dependencies > 1 ) {
+			$end = 'ies';
+		} else {
+			$end = 'y';
+		}
+		array_push( $cell ,
+			$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
+		if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
+			$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
+		}
+
+		array_push( $classes , 'missing-deps' );
 	}
 
-
-	protected function generateSpecificLines( $task )
+	protected function generateAssignedTask( &$cell , &$classes , $task )
 	{
-		return array( );
+		if ( ! array_key_exists( 'assigned' , $this->features ) ) {
+			return;
+		}
+
+		array_push( $cell , HTML::make( 'dd' )->appendText( 'Assigned to ' . $task->assigned_to ) );
+		array_push( $classes , 'assigned' );
 	}
 
+	protected function generateCompletedTask( &$cell , &$classes , $task )
+	{
+		if ( ! array_key_exists( 'completed' , $this->features ) ) {
+			return;
+		}
+
+		$completedAt = strtotime( $task->completed_at );
+		$completedAtDate = date( 'd/m/o' , $completedAt );
+		$completedAtTime = date( 'H:i:s' , $completedAt );
+		array_push( $cell , HTML::make( 'dd' )->appendText(
+			"Completed $completedAtDate at $completedAtTime by {$task->completed_by}" ) );
+		array_push( $classes , 'completed' );
+	}
 }
 
 

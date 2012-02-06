@@ -31,7 +31,7 @@ class Ctrl_AllTasks
 		}
 
 		$tree = Loader::DAO( 'items' )->getTree( );
-		$box = Loader::View( 'box' , $title , Loader::View( 'all_tasks' , $tasks , $mode ) )
+		$box = Loader::View( 'box' , $title , Loader::View( 'tasks_list' , $tasks ) )
 			->addButton( BoxButton::create( $bTitle , 'tasks?mode=' . $bMode )
 				->setClass( 'icon refresh' ) );
 		if ( !empty( $tree ) ) {

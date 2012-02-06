@@ -277,7 +277,8 @@ class Ctrl_ItemTasks
 	{
 		$tasks = Loader::DAO( 'tasks' )->getTasksAt( $this->item );
 
-		return Loader::View( 'box' , 'Tasks' , Loader::View( 'tasks' , $tasks ) )
+		return Loader::View( 'box' , 'Tasks' , Loader::View( 'tasks_list' , $tasks , array(
+					'deps' , 'assigned' , 'completed' ) ) )
 				->addButton( BoxButton::create( 'Add task' , 'tasks/add?to=' . $this->item->id )
 				->setClass( 'list-add' ) );
 	}

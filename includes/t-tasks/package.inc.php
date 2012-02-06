@@ -33,10 +33,9 @@ $package[ 'ctrls' ][] = 'task_notes';
 $package[ 'ctrls' ][] = 'toggle_task';
 $package[ 'ctrls' ][] = 'view_task';
 
-$package[ 'views' ][] = 'all_tasks';
-$package[ 'views' ][] = 'tasks';
+$package[ 'views' ][] = 'tasks_list';
+$package[ 'views' ][] = 'task_dependencies';
 $package[ 'views' ][] = 'task_details';
 $package[ 'views' ][] = 'task_note';
-$package[ 'views' ][] = 'task_dependencies';
 
 $package[ 'pages' ][] = 'tasks_tasks';
