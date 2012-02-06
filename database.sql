@@ -16,5 +16,6 @@ BEGIN;
 -- Task management and task dependencies
 \i database/tasks-functions.sql
 \i database/task-dependencies.sql
+\i database/tasks-view.sql
 
 COMMIT;
