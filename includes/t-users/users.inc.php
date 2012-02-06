@@ -9,6 +9,7 @@ class Page_TasksUsers
 		parent::__construct( array(
 			''	=> 'users_list' ,
 			'add'	=> 'users_add_form' ,
+			'edit'	=> 'users_edit_form' ,
 		) );
 		$this->setTitle( 'Users' );
 	}
@@ -28,6 +29,56 @@ class Ctrl_UsersList
 				->setClass( 'list-add' ) );
 	}
 
+}
+
+
+
+class View_UsersList
+	extends BaseURLAwareView
+{
+	private $users;
+
+	public function __construct( $users )
+	{
+		$this->users = $users;
+	}
+
+	public function render( )
+	{
+		$table = HTML::make( 'table' )
+			->appendElement( HTML::make( 'tr' )
+				->setAttribute( 'class' , 'header' )
+				->appendElement( HTML::make( 'th' )
+					->appendText( 'E-mail address' ) )
+				->appendElement( HTML::make( 'th' )
+					->appendText( 'Display name' ) ) );
+
+		foreach ( $this->users as $user ) {
+			$table->appendElement( $this->makeUserRow( $user ) );
+		}
+
+		return $table;
+	}
+
+	private function makeUserRow( $user )
+	{
+		$row = HTML::make( 'tr' )
+			->appendElement( HTML::make( 'td' )
+				->appendElement( $editLink = HTML::make( 'a' ) ) );
+
+		$editLink->setAttribute( 'href' , $this->base . '/users/edit?id=' . $user->user_id )
+			->appendText( $user->user_email );
+
+		$nameColumn = HTML::make( 'td' );
+		if ( $user->user_display_name !== null ) {
+			$nameColumn->appendText( $user->user_display_name );
+		} else {
+			$nameColumn->appendElement( HTML::make( 'em' )->appendText( 'N/A' ) );
+		}
+		$row->appendElement( $nameColumn );
+
+		return $row;
+	}
 }
 
 
@@ -126,48 +177,121 @@ class Ctrl_UsersAdd
 }
 
 
-
-class View_UsersList
-	extends BaseURLAwareView
+class Ctrl_UsersEditForm
+	extends Controller
 {
-	private $users;
 
-	public function __construct( $users )
+	public function handle( Page $page )
 	{
-		$this->users = $users;
-	}
-
-	public function render( )
-	{
-		$table = HTML::make( 'table' )
-			->appendElement( HTML::make( 'tr' )
-				->setAttribute( 'class' , 'header' )
-				->appendElement( HTML::make( 'th' )
-					->appendText( 'E-mail address' ) )
-				->appendElement( HTML::make( 'th' )
-					->appendText( 'Display name' ) ) );
-
-		foreach ( $this->users as $user ) {
-			$table->appendElement( $this->makeUserRow( $user ) );
+		try {
+			$userId = (int) $this->getParameter( 'id' );
+		} catch ( ParameterException $e ) {
+			return 'users';
+		}
+		$user = Loader::DAO( 'users' )->getUserById( $userId );
+		if ( $user === null ) {
+			return 'users';
 		}
 
-		return $table;
+		$page->setTitle( 'Modify user ' . $user->user_view_name );
+
+		$details = Loader::Create( 'Form' , 'Modify user' , 'user-edit' , 'Account details' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $user->user_id ) )
+			->addField( Loader::Create( 'Field' , 'email' , 'text' )
+					->setDescription( 'E-mail address:' )
+					->setValidator( Loader::Create( 'Validator_Email' , 'Invalid address.' ) )
+					->setDefaultValue( $user->user_email ) )
+			->addField( Loader::Create( 'Field' , 'display-name' , 'text' )
+					->setDescription( 'Display name:' )
+					->setMandatory( false )
+					->setValidator( Loader::Create( 'Validator_StringLength' , 'This display name',
+										5 , 256 , true ) )
+					->setDefaultValue( $user->user_display_name ) )
+			->addController( Loader::Ctrl( 'users_edit' ) )
+			->setURL( 'users' );
+
+		$password = Loader::Create( 'Form' , 'Modify password' , 'user-set-password' , 'Account password' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $user->user_id ) )
+			->addField( Loader::Create( 'Field' , 'pass' , 'password' )
+					->setDescription( 'New password:' )
+					->setValidator( Loader::Create( 'Validator_StringLength' , 'This password' , 8 ) ) )
+			->addField( Loader::Create( 'Field' , 'pass2' , 'password' )
+					->setDescription( 'Confirm new password:' ) )
+			->addController( Loader::Ctrl( 'users_set_password' ) )
+			->setSuccessURL( 'users' );
+
+		return array( $details->controller( ) , $password->controller( ) );
 	}
 
-	private function makeUserRow( $user )
+}
+
+
+class Ctrl_UsersEdit
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+
+	public function setForm( Form $form )
 	{
-		$row = HTML::make( 'tr' )
-			->appendElement( HTML::make( 'td' )
-				->appendText( $user->user_email ) );
+		$this->form = $form;
+	}
 
-		$nameColumn = HTML::make( 'td' );
-		if ( $user->user_display_name !== null ) {
-			$nameColumn->appendText( $user->user_display_name );
-		} else {
-			$nameColumn->appendElement( HTML::make( 'em' )->appendText( 'N/A' ) );
+
+	public function handle( Page $page )
+	{
+		$id = $this->form->field( 'id' )->value( );
+		$name = $this->form->field( 'display-name' )->value( );
+		$emailField = $this->form->field( 'email' );
+		$email = $emailField->value( );
+
+		$error = Loader::DAO( 'users' )->modify( $id , $email , $name );
+		switch ( $error ) {
+
+			case 0:
+				return true;
+
+			case 1:
+				$email->putError( 'Duplicate address.' );
+				break;
+
+			default:
+				$email->putError( 'An unknown error occurred (' . $error . ')' );
+				break;
 		}
-		$row->appendElement( $nameColumn );
 
-		return $row;
+		return null;
+	}
+}
+
+
+class Ctrl_UsersSetPassword
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+
+	public function setForm( Form $form )
+	{
+		$this->form = $form;
+	}
+
+
+	public function handle( Page $page )
+	{
+		$p1 = $this->form->field( 'pass' );
+		$p2 = $this->form->field( 'pass2' );
+		if ( $p1->value( ) != $p2->value( ) ) {
+			$p1->putError( 'Passwords did not match.' );
+			return null;
+		}
+
+		$id = $this->form->field( 'id' )->value( );
+		Loader::DAO( 'users' )->setPassword( $id , $p1->value( ) );
+		return true;
 	}
 }

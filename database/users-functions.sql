@@ -25,6 +25,32 @@ REVOKE EXECUTE ON FUNCTION users_add( TEXT , TEXT , INT , TEXT , TEXT ) FROM PUB
 GRANT EXECUTE ON FUNCTION users_add( TEXT , TEXT , INT , TEXT , TEXT) TO :webapp_user;
 
 
+--
+-- Update an user's address and display name
+--
+
+CREATE OR REPLACE FUNCTION users_edit( _id INT , _email TEXT , _name TEXT )
+	RETURNS INT
+	LANGUAGE PLPGSQL
+	STRICT VOLATILE SECURITY INVOKER
+AS $users_edit$
+BEGIN
+	IF _name = '' THEN
+		_name := NULL;
+	END IF;
+
+	UPDATE users SET user_email = _email , user_display_name = _name
+		WHERE user_id = _id;
+	RETURN ( CASE WHEN FOUND THEN 0 ELSE 2 END );
+EXCEPTION
+	WHEN unique_violation THEN
+		RETURN 1;
+END;
+$users_edit$;
+
+REVOKE EXECUTE ON FUNCTION users_edit( INT , TEXT , TEXT ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION users_edit( INT , TEXT , TEXT ) TO :webapp_user;
+
 
 --
 -- View that lists users and adds the string to use when displaying
