@@ -12,5 +12,7 @@ $package[ 'ctrls' ][] = 'users_add_form';
 $package[ 'ctrls' ][] = 'users_edit';
 $package[ 'ctrls' ][] = 'users_edit_form';
 $package[ 'ctrls' ][] = 'users_set_password';
+$package[ 'ctrls' ][] = 'users_view';
 
 $package[ 'views' ][] = 'users_list';
+$package[ 'views' ][] = 'users_view';

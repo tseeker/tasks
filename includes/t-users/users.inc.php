@@ -8,6 +8,7 @@ class Page_TasksUsers
 	{
 		parent::__construct( array(
 			''	=> 'users_list' ,
+			'view'	=> 'users_view' ,
 			'add'	=> 'users_add_form' ,
 			'edit'	=> 'users_edit_form' ,
 		) );
@@ -66,7 +67,7 @@ class View_UsersList
 			->appendElement( HTML::make( 'td' )
 				->appendElement( $editLink = HTML::make( 'a' ) ) );
 
-		$editLink->setAttribute( 'href' , $this->base . '/users/edit?id=' . $user->user_id )
+		$editLink->setAttribute( 'href' , $this->base . '/users/view?id=' . $user->user_id )
 			->appendText( $user->user_email );
 
 		$nameColumn = HTML::make( 'td' );
@@ -78,6 +79,63 @@ class View_UsersList
 		$row->appendElement( $nameColumn );
 
 		return $row;
+	}
+}
+
+
+class Ctrl_UsersView
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		try {
+			$id = (int) $this->getParameter( 'id' );
+		} catch ( ParameterException $e ) {
+			return 'users';
+		}
+
+		$user = Loader::DAO( 'users' )->getUserById( $id );
+		if ( $user === null ) {
+			return 'users';
+		}
+
+		$page->setTitle( 'User ' . $user->user_view_name );
+
+		return Loader::View( 'box' , 'User information' , Loader::View( 'users_view' , $user ) )
+			->addButton( BoxButton::create( 'Edit user' , 'users/edit?id=' . $id )
+				->setClass( 'icon edit' ) );
+	}
+
+}
+
+
+class View_UsersView
+	implements View
+{
+	private $user;
+
+	public function __construct( $user )
+	{
+		$this->user = $user;
+	}
+
+	public function render( )
+	{
+		$fields = array( );
+
+		$fields[] = HTML::make( 'dt' )->appendText( 'E-mail address:' );
+		$fields[] = HTML::make( 'dd' )->appendText( $this->user->user_email );
+		$fields[] = HTML::make( 'dt' )->appendText( 'Display name:' );
+		if ( $this->user->user_display_name === null ) {
+			$fields[] = HTML::make( 'dd' )->appendElement(
+				HTML::make( 'em' )->appendText( 'None defined at this time' ) );
+		} else {
+			$fields[] = HTML::make( 'dd' )->appendText( $this->user->user_display_name );
+		}
+
+		return HTML::make( 'dl' )
+			->append( $fields );
 	}
 }
 
@@ -209,7 +267,7 @@ class Ctrl_UsersEditForm
 										5 , 256 , true ) )
 					->setDefaultValue( $user->user_display_name ) )
 			->addController( Loader::Ctrl( 'users_edit' ) )
-			->setURL( 'users' );
+			->setURL( 'users/view?id=' . $userId );
 
 		$password = Loader::Create( 'Form' , 'Modify password' , 'user-set-password' , 'Account password' )
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
@@ -220,7 +278,7 @@ class Ctrl_UsersEditForm
 			->addField( Loader::Create( 'Field' , 'pass2' , 'password' )
 					->setDescription( 'Confirm new password:' ) )
 			->addController( Loader::Ctrl( 'users_set_password' ) )
-			->setSuccessURL( 'users' );
+			->setURL( 'users/view?id=' . $userId );
 
 		return array( $details->controller( ) , $password->controller( ) );
 	}

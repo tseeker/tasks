@@ -105,7 +105,7 @@ class Ctrl_LogIn
 		}
 
 		$_SESSION[ 'uid' ] = $user->user_id;
-		return true;
+		return 'users/view?id=' . $user->user_id;
 	}
 }
 
