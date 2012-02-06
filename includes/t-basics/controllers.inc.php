@@ -8,13 +8,13 @@ class Ctrl_HomePage
 	public final function handle( Page $page )
 	{
 		session_start( );
-		if (  array_key_exists( 'uid' , $_SESSION ) ) {
-			return 'items';
-		} elseif ( Loader::DAO( 'users' )->hasUsers( ) ) {
-			return 'login';
-		} else {
+		if ( ! Loader::DAO( 'users' )->hasUsers( ) ) {
 			return 'install';
 		}
+		if (  array_key_exists( 'uid' , $_SESSION ) ) {
+			return 'items';
+		}
+		return 'login';
 	}
 
 }
@@ -51,6 +51,9 @@ class Ctrl_CheckSession
 	public function handle( Page $page )
 	{
 		session_start( );
+		if ( ! Loader::DAO( 'users' )->hasUsers( ) ) {
+			return 'install';
+		}
 		if ( array_key_exists( $this->sessionKey , $_SESSION ) ) {
 			return null;
 		}
