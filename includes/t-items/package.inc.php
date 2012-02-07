@@ -10,7 +10,6 @@ $package[ 'files' ][] = 'page_controllers';
 $package[ 'files' ][] = 'pages';
 $package[ 'files' ][] = 'views';
 
-$package[ 'extras' ][] = 'Item_NameField';
 $package[ 'extras' ][] = 'Item_LocationField';
 
 $package[ 'ctrls' ][] = 'add_item';

@@ -96,7 +96,10 @@ class Ctrl_AddTaskForm
 			$form->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
 					->setDefaultValue( $target ) )
 				->addField( Loader::Create( 'Field' , 'item' , 'hidden' )
-					->setDefaultValue( $target ) );
+					->setDefaultValue( $target ) )
+				->addField( Loader::Create( 'Field' , 'item-name' , 'label' )
+					->setDescription( 'Item:' )
+					->setDefaultValue( $item->name ) );
 		}
 
 		$page->setTitle( 'New task' );
