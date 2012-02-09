@@ -177,8 +177,9 @@ class DAO_Items
 		$query = $this->query(
 			'SELECT p.item_id , p.item_name , p.item_description , COUNT(*) AS t_count '
 			.	'FROM items p '
-			.		'INNER JOIN tasks t USING( item_id ) '
-			.		'LEFT OUTER JOIN completed_tasks c USING( task_id ) '
+			.		'INNER JOIN task_containers USING ( item_id ) '
+			.		'INNER JOIN tasks t USING( tc_id ) '
+			.		'LEFT OUTER JOIN completed_tasks c ON t.task_id = c.task_id '
 			.	'WHERE c.task_id IS NULL '
 			.	'GROUP BY item_id, p.item_name' );
 		$results = $query->execute( );

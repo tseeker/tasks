@@ -360,6 +360,12 @@ div.box-buttons a.start:hover { background-position: -18px -90px }
 div.box-buttons a.claim { background-position: 0px -108px }
 div.box-buttons a.claim:hover { background-position: -18px -108px }
 
+div.box-buttons a.move-up { background-position: 0px -126px }
+div.box-buttons a.move-up:hover { background-position: -18px -126px }
+
+div.box-buttons a.move-down { background-position: 0px -144px }
+div.box-buttons a.move-down:hover { background-position: -18px -144px }
+
 div.box-buttons a.list-add::after {
 	content: '+';
 	font-weight: bold;

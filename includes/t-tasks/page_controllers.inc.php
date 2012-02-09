@@ -75,8 +75,15 @@ class Ctrl_AddTaskForm
 	{
 		try {
 			$target = (int) $this->getParameter( 'to' );
+			$targetIsItem = true;
 		} catch ( ParameterException $e ) {
-			$target = null;
+			try {
+				$target = (int) $this->getParameter( 'parent' );
+				$targetIsItem = false;
+			} catch ( ParameterException $e ) {
+				$target = null;
+				$targetIsItem = null;
+			}
 		}
 
 		$form = Loader::Create( 'Form' , 'Add this task' , 'create-task' );
@@ -86,20 +93,43 @@ class Ctrl_AddTaskForm
 			if ( ! $this->addItemSelector( $form ) ) {
 				return 'items';
 			}
-		} else {
+			$form->addField( Loader::Create( 'Field' , 'nested' , 'hidden' )
+				->setDefaultValue( 0 ) );
+		} elseif ( $targetIsItem ) {
 			$item = Loader::DAO( 'items' )->get( $target );
 			if ( $item === null ) {
-				return 'items';
+				return 'tasks';
 			}
 			$returnURL = 'items/view?id=' . $target;
 
 			$form->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
 					->setDefaultValue( $target ) )
+				->addField( Loader::Create( 'Field' , 'nested' , 'hidden' )
+					->setDefaultValue( 0 ) )
 				->addField( Loader::Create( 'Field' , 'item' , 'hidden' )
 					->setDefaultValue( $target ) )
 				->addField( Loader::Create( 'Field' , 'item-name' , 'label' )
+					->setMandatory( false )
 					->setDescription( 'Item:' )
 					->setDefaultValue( $item->name ) );
+		} else {
+			$parent = Loader::DAO( 'tasks' )->get( $target );
+			if ( $parent === null ) {
+				return 'tasks';
+			}
+			$returnURL = 'tasks/view?id=' . $target;
+			if ( $parent->completed_by !== null ) {
+				return $returnURL;
+			}
+
+			$form->addField( Loader::Create( 'Field' , 'parent' , 'hidden' )
+					->setDefaultValue( $target ) )
+				->addField( Loader::Create( 'Field' , 'nested' , 'hidden' )
+					->setDefaultValue( 1 ) )
+				->addField( Loader::Create( 'Field' , 'item-name' , 'label' )
+					->setMandatory( false )
+					->setDescription( 'Sub-task of:' )
+					->setDefaultValue( $parent->title ) );
 		}
 
 		$page->setTitle( 'New task' );
@@ -159,10 +189,13 @@ class Ctrl_ViewTask
 		$page->setTitle( $task->title . ' (task)' );
 
 		$result = array(
-			Loader::Ctrl( 'task_details' , $task ) ,
-			Loader::Ctrl( 'task_dependencies' , $task ) ,
+			Loader::Ctrl( 'task_details' , $task )
 		);
 
+		if ( $task->completed_by === null || ! empty( $task->subtasks ) ) {
+			$result[] = Loader::Ctrl( 'task_list_subtasks' , $task );
+		}
+		$result[] = Loader::Ctrl( 'task_dependencies' , $task );
 		if ( $task->completed_by === null ) {
 			array_push( $result , Loader::Ctrl( 'add_task_note_form' , $task ) );
 		}
@@ -197,6 +230,13 @@ class Ctrl_DeleteTaskForm
 		}
 		$page->setTitle( $task->title . ' (task)' );
 
+		// Create parent URL from either the item or parent task
+		if ( $task->parent_task === null ) {
+			$parentURL = 'items/view?id=' . $task->item;
+		} else {
+			$parentURL = 'tasks/view?id=' . $task->parent_task;
+		}
+
 		// Generate confirmation text
 		$confText = HTML::make( 'div' )
 			->appendElement( HTML::make( 'p' )
@@ -210,7 +250,7 @@ class Ctrl_DeleteTaskForm
 				->setDefaultValue( $task->id ) )
 			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
 			->setCancelURL( 'tasks/view?id=' . $task->id )
-			->setSuccessURL( 'items/view?id=' . $task->item )
+			->setSuccessURL( $parentURL )
 			->addController( Loader::Ctrl( 'delete_task' ) )
 			->controller( );
 
@@ -242,13 +282,19 @@ class Ctrl_EditTaskForm
 		$page->setTitle( $task->title . ' (task)' );
 
 
-		return Loader::Create( 'Form' , 'Update task' , 'edit-task' , 'Editing task' )
+		$form = Loader::Create( 'Form' , 'Update task' , 'edit-task' , 'Editing task' )
 			->setURL( 'tasks/view?id=' . $task->id )
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
 				->setDefaultValue( $task->id ) )
-			->addField( $this->createItemSelector( )
-				->setDefaultValue( $task->item ) )
-			->addField( Loader::Create( 'Field' , 'title' , 'text' )
+			->addField( Loader::Create( 'Field' , 'nested' , 'hidden' )
+				->setDefaultValue( $task->item === null ? 1 : 0 ) );
+
+		if ( $task->item !== null ) {
+			$form->addField( $this->createItemSelector( )
+				->setDefaultValue( $task->item ) );
+		}
+
+		return $form->addField( Loader::Create( 'Field' , 'title' , 'text' )
 				->setDescription( 'Title:' )
 				->setModifier( Loader::Create( 'Modifier_TrimString' ) )
 				->setValidator( Loader::Create( 'Validator_StringLength' , 'This title' , 5 , 256 ) )
@@ -411,31 +457,37 @@ class Ctrl_DependencyAddForm
 		$form = Loader::Create( 'Form' , 'Add dependency' , 'add-dep' )
 			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
 			->setDefaultValue( $id ) );
-		$this->addDependencySelector( $form , $task->possibleDependencies );
+		$this->addDependencySelector( $form , $task->possibleDependencies , $task->item !== null );
 		return $form->setURL( 'tasks/view?id=' . $id )
 			->addController( Loader::Ctrl( 'dependency_add' ) )
 			->controller( );
 
 	}
 
-	private function addDependencySelector( $form , $possibleDependencies )
+	private function addDependencySelector( $form , $possibleDependencies , $topLevel )
 	{
 		$form->addField( $select = Loader::Create( 'Field' , 'dependency' , 'select' )
 			->setDescription( 'Dependency to add:' )
 			->addOption( '' , '(please select a task)' ) );
 
-		$depsByItem = $this->getDependenciesByItem( $possibleDependencies );
-		$items = $this->getItemsToDisplay( $depsByItem );
-		foreach ( $items as $item ) {
-			$prefix = '-' . str_repeat( '--' , $item->depth );
-			$name = $prefix . ' ' . $item->name;
-			$select->addOption( 'I' . $item->id , $name , true );
-			if ( ! array_key_exists( $item->id , $depsByItem ) ) {
-				continue;
-			}
+		if ( $topLevel ) {
+			$depsByItem = $this->getDependenciesByItem( $possibleDependencies );
+			$items = $this->getItemsToDisplay( $depsByItem );
+			foreach ( $items as $item ) {
+				$prefix = '-' . str_repeat( '--' , $item->depth );
+				$name = $prefix . ' ' . $item->name;
+				$select->addOption( 'I' . $item->id , $name , true );
+				if ( ! array_key_exists( $item->id , $depsByItem ) ) {
+					continue;
+				}
 
-			foreach ( $depsByItem[ $item->id ] as $task ) {
-				$select->addOption( $task->id , $prefix . '-> ' . $task->title );
+				foreach ( $depsByItem[ $item->id ] as $task ) {
+					$select->addOption( $task->id , $prefix . '-> ' . $task->title );
+				}
+			}
+		} else {
+			foreach ( $possibleDependencies as $task ) {
+				$select->addOption( $task->id , $task->title );
 			}
 		}
 		return true;
@@ -546,3 +598,155 @@ class Ctrl_DependencyDeleteForm
 }
 
 
+
+class Ctrl_TaskMoveDown
+	extends Controller
+{
+
+	public function __construct( )
+	{
+		$this->dao = Loader::DAO( 'tasks' );
+	}
+
+	public function handle( Page $page )
+	{
+		try {
+			$id = (int) $this->getParameter( 'id' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+
+		$task = $this->dao->get( $id );
+		if ( $task === null ) {
+			return 'tasks';
+		}
+
+		if ( empty( $task->moveDownTargets ) ) {
+			return 'tasks/view?id=' . $id;
+		}
+
+		$page->setTitle( $task->title . ' (task)' );
+		$sibling = $this->getSibling( $task );
+		if ( $sibling != null ) {
+			if ( $this->handleSelectedSibling( $task , $sibling ) ) {
+				return 'tasks/view?id=' . $id;
+			} else {
+				return $this->confirmationForm( $task , $sibling );
+			}
+		}
+		return $this->siblingSelectionForm( $task );
+	}
+
+	private function getSibling( $task )
+	{
+		try {
+			$sibling = (int) $this->getParameter( 'sibling' );
+			$okSiblings = array_map( function( $item ) { return $item->target_id; } , $task->moveDownTargets );
+			if ( ! in_array( $sibling , $okSiblings ) ) {
+				$sibling = null;
+			}
+		} catch ( ParameterException $e ) {
+			$sibling = null;
+		}
+		return $sibling;
+	}
+
+	private function handleSelectedSibling( $task , $sibling )
+	{
+		try {
+			$force = (bool) $this->getParameter( 'force' );
+		} catch ( ParameterException $e ) {
+			$force = false;
+		}
+
+		return $this->dao->moveDown( $task , $sibling , $force );
+	}
+
+	private function confirmationForm( $task , $sibling )
+	{
+		$sibling = $this->dao->get( $sibling );
+		$confText = HTML::make( 'div' )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'All dependencies and reverse dependencies of the '
+					. 'selected task will be lost when it is moved into ' )
+				->appendElement( HTML::make( 'strong' )->appendText( $sibling->title ) )
+				->appendText( '.' ) )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'Please confirm.' ) );
+
+		return Loader::Create( 'Form' , 'Move task' , 'move-down' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $task->id ) )
+			->addField( Loader::Create( 'Field' , 'sibling' , 'hidden' )
+				->setDefaultValue( $sibling->id ) )
+			->addField( Loader::Create( 'Field' , 'force' , 'hidden' )
+				->setDefaultValue( 1 ) )
+			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
+			->setURL( 'tasks/view?id=' . $task->id )
+			->controller( );
+	}
+
+	private function siblingSelectionForm( $task )
+	{
+		$selector = Loader::Create( 'Field' , 'sibling' , 'select' )
+			->setDescription( 'Move task into: ' );
+		foreach ( $task->moveDownTargets as $target ) {
+			$selector->addOption( $target->target_id , $target->target_title );
+		}
+		return Loader::Create( 'Form' , 'Move task' , 'move-down' , 'Move task to sibling' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $task->id ) )
+			->addField( $selector )
+			->setURL( 'tasks/view?id=' . $task->id )
+			->controller( );
+	}
+}
+
+
+class Ctrl_TaskMoveUp
+	extends Controller
+{
+
+	public function handle( Page $page )
+	{
+		try {
+			$id = (int) $this->getParameter( 'id' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+
+		$dao = Loader::DAO( 'tasks' );
+		$task = $dao->get( $id );
+		if ( $task === null ) {
+			return 'tasks';
+		}
+
+		try {
+			$force = (bool) $this->getParameter( 'force' );
+		} catch ( ParameterException $e ) {
+			$force = false;
+		}
+
+		if ( ! $task->can_move_up || $dao->moveUp( $task , $force ) ) {
+			return 'tasks/view?id=' . $id;
+		}
+
+		$confText = HTML::make( 'div' )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'All dependencies and reverse dependencies of the '
+					. 'selected task will be lost when it is moved.' ) )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'Please confirm.' ) );
+
+		$page->setTitle( $task->title . ' (task)' );
+		return Loader::Create( 'Form' , 'Move task' , 'move-up' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $id ) )
+			->addField( Loader::Create( 'Field' , 'force' , 'hidden' )
+				->setDefaultValue( 1 ) )
+			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
+			->setURL( 'tasks/view?id=' . $id )
+			->controller( );
+	}
+
+}

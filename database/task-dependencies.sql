@@ -252,12 +252,15 @@ REVOKE EXECUTE ON FUNCTION tgf_taskdep_bi() FROM PUBLIC;
 --
 -- List all dependencies that can be added to a task.
 --
-CREATE OR REPLACE FUNCTION tasks_possible_dependencies( o_id INT )
+DROP FUNCTION IF EXISTS tasks_possible_dependencies( INT );
+CREATE FUNCTION tasks_possible_dependencies( o_id INT )
 	RETURNS SETOF tasks
 	STRICT STABLE
 AS $tasks_possible_dependencies$
-	SELECT * FROM tasks
-		WHERE task_id NOT IN (
+	SELECT t.*
+		FROM tasks t
+			INNER JOIN tasks t2 USING ( ltc_id )
+		WHERE t2.task_id = $1 AND t.task_id NOT IN (
 			SELECT d.task_id_depends AS id
 				FROM taskdep_nodes n1
 					INNER JOIN task_dependencies d
@@ -281,18 +284,28 @@ GRANT EXECUTE ON FUNCTION tasks_possible_dependencies( INT ) TO :webapp_user;
 --
 -- Add a dependency
 --
-CREATE OR REPLACE FUNCTION tasks_add_dependency( t_id INT , t_dependency INT )
+DROP FUNCTION IF EXISTS tasks_add_dependency( INT , INT );
+CREATE FUNCTION tasks_add_dependency( t_id INT , t_dependency INT )
 		RETURNS INT
 		STRICT VOLATILE
 		SECURITY INVOKER
 	AS $tasks_add_dependency$
+
+DECLARE
+	ltc	INT;
+
 BEGIN
-	INSERT INTO task_dependencies( task_id , task_id_depends )
-		VALUES ( t_id , t_dependency );
+	SELECT INTO ltc ltc_id FROM tasks WHERE task_id = t_id;
+	IF NOT FOUND THEN
+		RETURN 1;
+	END IF;
+
+	INSERT INTO task_dependencies( ltc_id , task_id , task_id_depends )
+		VALUES ( ltc , t_id , t_dependency );
 	RETURN 0;
 EXCEPTION
 	WHEN foreign_key_violation THEN
-		RETURN 1;
+		RETURN 3;
 	WHEN check_violation THEN
 		RETURN 2;
 END;

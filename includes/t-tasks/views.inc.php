@@ -60,7 +60,7 @@ class View_TasksList
 			->appendElement( HTML::make( 'a' )
 				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $task->id )
 				->appendText( $task->title ) ) );
-		$this->addItem( $cell , $task );
+		$this->addParent( $cell , $task );
 		$classes = array( );
 
 		$addedAt = strtotime( $task->added_at );
@@ -75,6 +75,9 @@ class View_TasksList
 			if ( $task->missing_dependencies !== null ) {
 				$this->generateMissingDependencies( $cell , $classes , $task );
 			}
+			if ( $task->missing_subtasks !== null ) {
+				$this->generateMissingSubtasks( $cell , $classes , $task );
+			}
 			if ( $task->assigned_to !== null ) {
 				$this->generateAssignedTask( $cell , $classes , $task );
 			}
@@ -82,19 +85,28 @@ class View_TasksList
 
 		if ( ! empty( $classes ) ) {
 			foreach ( $cell as $entry ) {
-				$entry->setAttribute( 'class' , join( ' ' , $classes ) );
+				$entry->setAttribute( 'class' , join( ' ' , array_unique( $classes ) ) );
 			}
 		}
 
 		return $cell;
 	}
 
-	protected function addItem( &$cell , $task )
+	protected function addParent( &$cell , $task )
 	{
 		if ( ! array_key_exists( 'item' , $this->features ) ) {
 			return;
 		}
 
+		if ( $task->item !== null ) {
+			$this->addItem( $cell , $task );
+		} else {
+			$this->addParentTask( $cell , $task );
+		}
+	}
+
+	protected function addItem( &$cell , $task )
+	{
 		$itemsDao = Loader::DAO( 'items' );
 		$item = $itemsDao->get( $task->item );
 		$lineage = $itemsDao->getLineage( $item );
@@ -114,6 +126,17 @@ class View_TasksList
 		array_push( $cell , HTML::make( 'dd' )->append( $contents ) );
 	}
 
+	protected function addParentTask( &$cell , $task )
+	{
+		$parent = $this->dao->get( $task->parent_task );
+
+		array_push( $cell , HTML::make( 'dd' )
+			->appendText( 'Sub-task of ' )
+			->appendElement( HTML::make( 'a' )
+				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $parent->id )
+				->appendText( $parent->title ) ) );
+	}
+
 	protected function generateMissingDependencies( &$cell , &$classes , $task )
 	{
 		if ( ! array_key_exists( 'deps' , $this->features ) ) {
@@ -130,6 +153,23 @@ class View_TasksList
 		if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
 			$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
 		}
+
+		array_push( $classes , 'missing-deps' );
+	}
+
+	protected function generateMissingSubtasks( &$cell , &$classes , $task )
+	{
+		if ( ! array_key_exists( 'deps' , $this->features ) ) {
+			return;
+		}
+
+		if ( $task->missing_subtasks > 1 ) {
+			$end = 's';
+		} else {
+			$end = '';
+		}
+		array_push( $cell ,
+			$md = HTML::make( 'dd' )->appendText( "{$task->missing_subtasks} incomplete sub-task$end" ) );
 
 		array_push( $classes , 'missing-deps' );
 	}
@@ -173,11 +213,22 @@ class View_TaskDetails
 	public function render( )
 	{
 		$list = HTML::make( 'dl' )
-			->setAttribute( 'class' , 'tasks' )
-			->appendElement( HTML::make( 'dt' )
-				->appendText( 'On item:' ) )
-			->appendElement( HTML::make( 'dd' )
-				->append( $this->formatPlaceLineage( $this->task->item ) ) );
+			->setAttribute( 'class' , 'tasks' );
+
+		if ( $this->task->item !== null ) {
+			$list->appendElement( HTML::make( 'dt' )
+					->appendText( 'On item:' ) )
+				->appendElement( HTML::make( 'dd' )
+					->append( $this->formatPlaceLineage( $this->task->item ) ) );
+		} else {
+			$list->appendElement( HTML::make( 'dt' )
+					->appendText( 'Sub-task of:' ) )
+				->appendElement( HTML::make( 'dd' )
+					->appendElement( HTML::make( 'a' )
+						->setAttribute( 'href' , $this->base .
+							'/tasks/view?id=' . $this->task->parent_task->id )
+						->appendText( $this->task->parent_task->title ) ) );
+		}
 
 		if ( $this->task->description != '' ) {
 			$list->appendElement( HTML::make( 'dt' )
@@ -317,6 +368,8 @@ class View_TaskDependencies
 						->appendText( $dependency->item_name ) )
 					->appendElement( $itemList ) );
 				$prevItem = $dependency->item;
+			} elseif ( $itemList === null ) {
+				$itemList = $list;
 			}
 
 			$entry = HTML::make( 'li' )->appendElement(

@@ -35,6 +35,7 @@ class DAO_Tasks
 		return $this->query(
 			'SELECT * FROM tasks_list '
 			.	'WHERE completed_at IS NULL AND missing_dependencies IS NULL '
+			.		'AND missing_subtasks IS NULL '
 			.	'ORDER BY priority DESC , added_at DESC' )->execute( );
 	}
 
@@ -42,7 +43,8 @@ class DAO_Tasks
 	{
 		return $this->query(
 			'SELECT * FROM tasks_list '
-			.	'WHERE completed_at IS NULL AND missing_dependencies IS NOT NULL '
+			.	'WHERE completed_at IS NULL '
+			.		'AND ( missing_dependencies IS NOT NULL OR missing_subtasks IS NOT NULL ) '
 			.	'ORDER BY priority DESC , total_missing_dependencies ASC , added_at DESC' )->execute( );
 	}
 
@@ -57,7 +59,7 @@ class DAO_Tasks
 			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+			.		'END ) DESC , total_missing_dependencies ASC NULLS FIRST , added_at DESC'
 		)->execute( $item->id );
 	}
 
@@ -80,21 +82,17 @@ class DAO_Tasks
 	}
 
 
+	public function addNestedTask( $parent , $title , $priority , $description )
+	{
+		$result = $this->query( 'SELECT tasks_add_nested( $1 , $2 , $3 , $4 , $5 ) AS error' )
+			->execute( $parent , $title , $description , $priority , $_SESSION[ 'uid' ] );
+		return $result[0]->error;
+	}
+
+
 	public function get( $id )
 	{
-		$result = $this->query(
-			'SELECT t.task_id AS id, t.task_title AS title, t.item_id AS item ,'
-			.		't.task_description AS description, t.task_added AS added_at, '
-			.		'u1.user_view_name AS added_by, ct.completed_task_time AS completed_at, '
-			.		'u2.user_view_name AS assigned_to , u2.user_id AS assigned_id , '
-			.		'u3.user_view_name AS completed_by, t.user_id AS uid , '
-			.		't.task_priority AS priority '
-			.	'FROM tasks t '
-			.		'INNER JOIN users_view u1 ON u1.user_id = t.user_id '
-			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
-			.		'LEFT OUTER JOIN users_view u2 ON u2.user_id = t.user_id_assigned '
-			.		'LEFT OUTER JOIN users_view u3 ON u3.user_id = ct.user_id '
-			.	'WHERE t.task_id = $1' )->execute( $id );
+		$result = $this->query( 'SELECT * FROM tasks_single_view WHERE id = $1' )->execute( $id );
 		if ( empty( $result ) ) {
 			return null;
 		}
@@ -107,33 +105,50 @@ class DAO_Tasks
 			.		'INNER JOIN users_view u USING (user_id) '
 			.	'WHERE n.task_id = $1 '
 			.	'ORDER BY n.note_added DESC' )->execute( $id );
+		$task->subtasks = $this->query(
+			'SELECT * FROM tasks_list '
+			.	'WHERE parent_task = $1 '
+			.	'ORDER BY ( CASE '
+			.			'WHEN completed_at IS NULL THEN '
+			.				'priority '
+			.			'ELSE '
+			.				'-1 '
+			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+		)->execute( $id );
+		$task->moveDownTargets = $this->query(
+			'SELECT * FROM tasks_move_down_targets '
+			.	'WHERE task_id = $1 '
+			.	'ORDER BY target_title' )->execute( $id );
 		$task->dependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
 			.		'i.item_name AS item_name , '
 			.		'( ct.completed_task_time IS NOT NULL ) AS completed , '
 			.		'tl.total_missing_dependencies AS missing_dependencies '
 			.	'FROM task_dependencies td '
 			.		'INNER JOIN tasks t ON t.task_id = td.task_id_depends '
-			.		'INNER JOIN items i USING ( item_id ) '
+			.		'INNER JOIN task_containers tc USING ( tc_id ) '
 			.		'INNER JOIN tasks_list tl ON tl.id = t.task_id '
+			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.	'WHERE td.task_id = $1 '
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->reverseDependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
 			.		'i.item_name AS item_name , '
 			.		'( ct.completed_task_time IS NOT NULL ) AS completed '
 			.	'FROM task_dependencies td '
 			.		'INNER JOIN tasks t USING( task_id ) '
-			.		'INNER JOIN items i USING ( item_id ) '
-			.		'LEFT OUTER JOIN completed_tasks ct USING ( task_id ) '
+			.		'INNER JOIN task_containers tc USING ( tc_id ) '
+			.		'LEFT OUTER JOIN items i USING ( item_id ) '
+			.		'LEFT OUTER JOIN completed_tasks ct ON t.task_id = ct.task_id '
 			.	'WHERE td.task_id_depends = $1 '
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->possibleDependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
 			.		'i.item_name AS item_name '
 			.	'FROM tasks_possible_dependencies( $1 ) t '
-			.		'INNER JOIN items i USING ( item_id ) '
+			.		'INNER JOIN task_containers tc USING ( tc_id ) '
+			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
 
 		return $task;
@@ -159,6 +174,11 @@ class DAO_Tasks
 				return false;
 			}
 		}
+		foreach ( $task->subtasks as $subtask ) {
+			if ( $subtask->completed_at === null ) {
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -171,7 +191,12 @@ class DAO_Tasks
 				return false;
 			}
 		}
-		return true;
+
+		if ( $task->parent_task === null ) {
+			return true;
+		}
+		$parent = ( $task->parent_task instanceof StdClass ) ? $task->parent_task : $this->get( $task->parent_task );
+		return $parent->completed_by === null;
 	}
 
 
@@ -198,6 +223,13 @@ class DAO_Tasks
 	{
 		$result = $this->query( 'SELECT update_task( $1 , $2 , $3 , $4 , $5 , $6 ) AS error' )
 			->execute( $id , $item , $title , $description , $priority , $assignee );
+		return $result[0]->error;
+	}
+
+	public function updateNestedTask( $id , $title , $priority , $description , $assignee )
+	{
+		$result = $this->query( 'SELECT update_task( $1 , $2 , $3 , $4 , $5 ) AS error' )
+			->execute( $id , $title , $description , $priority , $assignee );
 		return $result[0]->error;
 	}
 
@@ -257,5 +289,19 @@ class DAO_Tasks
 			.			'USING ( task_id ) '
 			.	'WHERE _task2.task_id = _task.task_id AND _completed.task_id IS NULL AND _task.task_id = $1'
 		)->execute( $task , $user );
+	}
+
+	public function moveUp( $task , $force = false )
+	{
+		$result = $this->query( 'SELECT tasks_move_up( $1 , $2 ) AS success')
+			->execute( $task->id , $force ? 't' : 'f' );
+		return ( $result[0]->success == 't' );
+	}
+
+	public function moveDown( $task , $sibling , $force )
+	{
+		$result = $this->query( 'SELECT tasks_move_down( $1 , $2 , $3 ) AS success')
+			->execute( $task->id , $sibling , $force ? 't' : 'f' );
+		return ( $result[0]->success == 't' );
 	}
 }

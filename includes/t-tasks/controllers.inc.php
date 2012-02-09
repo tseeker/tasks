@@ -14,6 +14,15 @@ class Ctrl_AddTask
 
 	public function handle( Page $page )
 	{
+		$nested = $this->form->field( 'nested' )->value( );
+		if ( 0 === (int) $nested ) {
+			return $this->addTopLevelTask( );
+		}
+		return $this->addNestedTask( );
+	}
+
+	private function addTopLevelTask( )
+	{
 		$item = $this->form->field( 'item' );
 		$name = $this->form->field( 'title' );
 		$priority = $this->form->field( 'priority' );
@@ -32,6 +41,32 @@ class Ctrl_AddTask
 
 		case 2:
 			$item->putError( 'This item has been deleted' );
+			break;
+
+		default:
+			$name->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
+	}
+
+	private function addNestedTask( )
+	{
+		$parent = $this->form->field( 'parent' );
+		$name = $this->form->field( 'title' );
+		$priority = $this->form->field( 'priority' );
+		$description = $this->form->field( 'description' );
+
+		$error = Loader::DAO( 'tasks' )->addNestedTask( (int) $parent->value( ) ,
+			$name->value( ) , (int) $priority->value( ) , $description->value( ) );
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$name->putError( 'Duplicate sub-task name.' );
 			break;
 
 		default:
@@ -62,8 +97,13 @@ class Ctrl_TaskDetails
 		} else {
 			$bTitle = "Active task";
 		}
-		$items = Loader::DAO( 'items' );
-		$items->getLineage( $this->task->item = $items->get( $this->task->item ) );
+
+		if ( $this->task->item !== null ) {
+			$items = Loader::DAO( 'items' );
+			$items->getLineage( $this->task->item = $items->get( $this->task->item ) );
+		} else {
+			$this->task->parent_task = Loader::DAO( 'tasks' )->get( $this->task->parent_task );
+		}
 
 		$box = Loader::View( 'box' , $bTitle , Loader::View( 'task_details' , $this->task ) );
 
@@ -81,6 +121,15 @@ class Ctrl_TaskDetails
 				$box->addButton( BoxButton::create( 'Claim task' , 'tasks/claim?id=' . $this->task->id )
 						->setClass( 'icon claim' ) );
 			}
+
+			if ( $this->task->can_move_up == 't' ) {
+				$box->addButton( BoxButton::create( 'Move task to grandparent' ,
+					'tasks/move/up?id=' . $this->task->id )->setClass( 'icon move-up' ) );
+			}
+			if ( ! empty( $this->task->moveDownTargets ) ) {
+				$box->addButton( BoxButton::create( 'Move task to sibling' ,
+					'tasks/move/down?id=' . $this->task->id )->setClass( 'icon move-down' ) );
+			}
 		} else {
 			if ( $tasks->canRestart( $this->task ) ) {
 				$box->addButton( BoxButton::create( 'Re-activate' , 'tasks/restart?id=' . $this->task->id )
@@ -92,6 +141,32 @@ class Ctrl_TaskDetails
 		if ( Loader::DAO( 'tasks' )->canDelete( $this->task ) ) {
 			$box->addButton( BoxButton::create( 'Delete' , 'tasks/delete?id=' . $this->task->id )
 					->setClass( 'icon delete' ) );
+		}
+
+		return $box;
+	}
+}
+
+
+class Ctrl_TaskListSubtasks
+	extends Controller
+{
+	private $task;
+
+	public function __construct( $task )
+	{
+		$this->task = $task;
+	}
+
+
+	public function handle( Page $page )
+	{
+		$box = Loader::View( 'box' , 'Sub-tasks' ,
+			Loader::View( 'tasks_list' , $this->task->subtasks , array( 'deps' , 'assigned' , 'completed' ) ) );
+
+		if ( $this->task->completed_by === null ) {
+			$box->addButton( BoxButton::create( 'Add sub-task' , 'tasks/add?parent=' . $this->task->id )
+				->setClass( 'list-add' ) );
 		}
 
 		return $box;
@@ -112,14 +187,17 @@ class Ctrl_TaskDependencies
 
 	public function handle( Page $page )
 	{
-		$views = array(
-			$depBox = Loader::View( 'box' , 'Dependencies' ,
-				Loader::View( 'task_dependencies' , $this->task , false ) )
-		);
+		$views = array( );
 
-		if ( ! empty( $this->task->possibleDependencies ) ) {
-			$depBox->addButton( BoxButton::create( 'Add dependency' , 'tasks/deps/add?to=' . $this->task->id )
-					->setClass( 'list-add' ) );
+		if ( ! empty( $this->task->dependencies )
+				|| ( $this->task->completed_by === null && ! empty( $this->task->possibleDependencies ) ) ) {
+			$views[] = ( $depBox = Loader::View( 'box' , 'Dependencies' ,
+				Loader::View( 'task_dependencies' , $this->task , false ) ) );
+
+			if ( ! empty( $this->task->possibleDependencies ) ) {
+				$depBox->addButton( BoxButton::create( 'Add dependency' , 'tasks/deps/add?to=' . $this->task->id )
+						->setClass( 'list-add' ) );
+			}
 		}
 
 		if ( ! empty( $this->task->reverseDependencies ) ) {
@@ -230,12 +308,54 @@ class Ctrl_EditTask
 	public function handle( Page $page )
 	{
 		$id = $this->form->field( 'id' );
-		$item = $this->form->field( 'item' );
+
+		$nested = $this->form->field( 'nested' )->value( );
+		if ( 0 == (int) $nested ) {
+			$item = $this->form->field( 'item' );
+		} else {
+			$item = null;
+		}
+
 		$name = $this->form->field( 'title' );
 		$priority = $this->form->field( 'priority' );
 		$description = $this->form->field( 'description' );
 		$assignee = $this->form->field( 'assigned-to' );
 
+		if ( $item != null ) {
+			return $this->handleTopLevelTask( $id , $item , $name , $priority , $description , $assignee );
+		}
+		return $this->handleNestedTask(  $id , $name , $priority , $description , $assignee );
+	}
+
+	private function handleNestedTask( $id , $name , $priority , $description , $assignee )
+	{
+		$error = Loader::DAO( 'tasks' )->updateNestedTask( (int) $id->value( ) , $name->value( ) ,
+			(int) $priority->value( ) , $description->value( ) ,
+			(int) $assignee->value( ) );
+
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$name->putError( 'Another sub-task already uses this title.' );
+			break;
+
+		case 2:
+			$assignee->putError( 'This user has been deleted.' );
+			break;
+
+		default:
+			$name->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
+	}
+
+	private function handleTopLevelTask( $id , $item , $name , $priority , $description , $assignee )
+	{
 		$error = Loader::DAO( 'tasks' )->updateTask( (int) $id->value( ) ,
 			(int) $item->value( ) , $name->value( ) ,
 			(int) $priority->value( ) , $description->value( ) ,
@@ -373,8 +493,8 @@ class Ctrl_DependencyAdd
 	public function handle( Page $page )
 	{
 		$id = (int) $this->form->field( 'to' )->value( );
-		$dependency = $this->form->field( 'dependency' )->value( );
-		$error = Loader::DAO( 'tasks' )->addDependency( $id , $dependency );
+		$dependency = $this->form->field( 'dependency' );
+		$error = Loader::DAO( 'tasks' )->addDependency( $id , $dependency->value( ) );
 
 		switch ( $error ) {
 
@@ -382,15 +502,19 @@ class Ctrl_DependencyAdd
 			return true;
 
 		case 1:
-			$name->putError( 'The task you selected has been deleted.' );
+			$dependency->putError( 'The task you selected has been deleted.' );
 			break;
 
 		case 2:
-			$item->putError( 'This dependency is no longer possible.' );
+			$dependency->putError( 'This dependency is no longer possible.' );
+			break;
+
+		case 3:
+			$dependency->putError( 'These tasks are no longer at the same level.' );
 			break;
 
 		default:
-			$name->putError( "An unknown error occurred ($error)" );
+			$dependency->putError( "An unknown error occurred ($error)" );
 			break;
 		}
 

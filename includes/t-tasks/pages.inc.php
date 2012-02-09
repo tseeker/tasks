@@ -15,10 +15,12 @@ class Page_TasksTasks
 			'finish'	=> array( 'toggle_task' , false ) ,
 			'restart'	=> array( 'toggle_task' , true ) ,
 			'view'		=> 'view_task' ,
-			'notes/edit'	=> 'edit_note_form' ,
-			'notes/delete'	=> 'delete_note_form' ,
 			'deps/add'	=> 'dependency_add_form' ,
 			'deps/delete'	=> 'dependency_delete_form' ,
+			'move/down'	=> 'task_move_down' ,
+			'move/up'	=> 'task_move_up' ,
+			'notes/edit'	=> 'edit_note_form' ,
+			'notes/delete'	=> 'delete_note_form' ,
 		));
 	}
 

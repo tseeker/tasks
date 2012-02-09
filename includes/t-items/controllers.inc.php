@@ -280,6 +280,6 @@ class Ctrl_ItemTasks
 		return Loader::View( 'box' , 'Tasks' , Loader::View( 'tasks_list' , $tasks , array(
 					'deps' , 'assigned' , 'completed' ) ) )
 				->addButton( BoxButton::create( 'Add task' , 'tasks/add?to=' . $this->item->id )
-				->setClass( 'list-add' ) );
+					->setClass( 'list-add' ) );
 	}
 }
