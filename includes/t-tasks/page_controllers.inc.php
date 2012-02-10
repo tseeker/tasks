@@ -720,17 +720,52 @@ class Ctrl_TaskMoveUp
 		if ( $task === null ) {
 			return 'tasks';
 		}
+		if ( ! $task->can_move_up ) {
+			return 'tasks/view?id=' . $id;
+		}
+
+		$page->setTitle( $task->title . ' (task)' );
+		try {
+			$confirmed = (bool) $this->getParameter( 'confirmed' );
+		} catch ( ParameterException $e ) {
+			$confirmed = false;
+		}
+		if ( ! $confirmed ) {
+			return $this->showConfirmationForm( $task );
+		}
 
 		try {
 			$force = (bool) $this->getParameter( 'force' );
 		} catch ( ParameterException $e ) {
 			$force = false;
 		}
-
-		if ( ! $task->can_move_up || $dao->moveUp( $task , $force ) ) {
+		if ( $dao->moveUp( $task , $force ) ) {
 			return 'tasks/view?id=' . $id;
 		}
+		return $this->showForceForm( $task );
+	}
 
+	private function showConfirmationForm( $task )
+	{
+		$confText = HTML::make( 'div' )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'You are about to move this sub-task into its '
+					. 'grand-parent.' ) )
+			->appendElement( HTML::make( 'p' )
+				->appendText( 'Please confirm.' ) );
+
+		return Loader::Create( 'Form' , 'Move task' , 'move-up' )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $task->id ) )
+			->addField( Loader::Create( 'Field' , 'confirmed' , 'hidden' )
+				->setDefaultValue( 1 ) )
+			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
+			->setURL( 'tasks/view?id=' . $task->id )
+			->controller( );
+	}
+
+	private function showForceForm( $task )
+	{
 		$confText = HTML::make( 'div' )
 			->appendElement( HTML::make( 'p' )
 				->appendText( 'All dependencies and reverse dependencies of the '
@@ -738,14 +773,15 @@ class Ctrl_TaskMoveUp
 			->appendElement( HTML::make( 'p' )
 				->appendText( 'Please confirm.' ) );
 
-		$page->setTitle( $task->title . ' (task)' );
 		return Loader::Create( 'Form' , 'Move task' , 'move-up' )
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
-				->setDefaultValue( $id ) )
+				->setDefaultValue( $task->id ) )
+			->addField( Loader::Create( 'Field' , 'confirmed' , 'hidden' )
+				->setDefaultValue( 1 ) )
 			->addField( Loader::Create( 'Field' , 'force' , 'hidden' )
 				->setDefaultValue( 1 ) )
 			->addField( Loader::Create( 'Field' , 'confirm' , 'html' )->setDefaultValue( $confText ) )
-			->setURL( 'tasks/view?id=' . $id )
+			->setURL( 'tasks/view?id=' . $task->id )
 			->controller( );
 	}
 
