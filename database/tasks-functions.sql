@@ -72,7 +72,7 @@ CREATE FUNCTION finish_task( t_id INT , u_id INT , n_text TEXT )
 	AS $finish_task$
 BEGIN
 	PERFORM 1 FROM tasks_single_view t
-		WHERE task_id = t_id AND badness = 0;
+		WHERE id = t_id AND badness = 0;
 	IF NOT FOUND THEN
 		RETURN 2;
 	END IF;
