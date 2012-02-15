@@ -11,7 +11,8 @@ class Data_Item
 	public $depth;
 	public $lineage;
 
-	public $activeTasks;
+	public $activeTasks = 0;
+	public $activeTasksTotal = 0;
 	public $inactiveTasks;
 
 	public function __construct( $id , $name )

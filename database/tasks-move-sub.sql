@@ -75,7 +75,7 @@ BEGIN
 	END IF;
 
 	SELECT INTO _gp_container , _gp_lcontainer
-		gp.tc_id , gp.ltc_id
+		gp.item_id , gp.ltc_id
 		FROM tasks t 
 			INNER JOIN logical_task_containers lt
 				USING ( ltc_id )
@@ -86,7 +86,7 @@ BEGIN
 	DELETE FROM task_dependencies
 		WHERE task_id = _task OR task_id_depends = _task;
 	UPDATE tasks
-		SET tc_id = _gp_container ,
+		SET item_id = _gp_container ,
 			ltc_id = _gp_lcontainer
 		WHERE task_id = _task;
 	RETURN TRUE;
@@ -127,8 +127,7 @@ BEGIN
 		RETURN FALSE;
 	END IF;
 
-	SELECT INTO _s_container tc_id
-		FROM task_containers
+	SELECT INTO _s_container item_id FROM tasks
 		WHERE task_id = _sibling;
 	SELECT INTO _s_lcontainer ltc_id
 		FROM logical_task_containers
@@ -137,7 +136,7 @@ BEGIN
 	DELETE FROM task_dependencies
 		WHERE task_id = _task OR task_id_depends = _task;
 	UPDATE tasks
-		SET tc_id = _s_container ,
+		SET item_id = _s_container ,
 			ltc_id = _s_lcontainer
 		WHERE task_id = _task;
 	RETURN TRUE;

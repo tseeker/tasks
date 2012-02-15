@@ -27,15 +27,14 @@ class DAO_Tasks
 			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , total_missing_dependencies ASC NULLS FIRST , added_at DESC' )->execute( );
+			.		'END ) DESC , badness , added_at DESC' )->execute( );
 	}
 
 	public function getAllActiveTasks( )
 	{
 		return $this->query(
 			'SELECT * FROM tasks_list '
-			.	'WHERE completed_at IS NULL AND missing_dependencies IS NULL '
-			.		'AND missing_subtasks IS NULL '
+			.	'WHERE completed_at IS NULL AND badness = 0 '
 			.	'ORDER BY priority DESC , added_at DESC' )->execute( );
 	}
 
@@ -43,9 +42,8 @@ class DAO_Tasks
 	{
 		return $this->query(
 			'SELECT * FROM tasks_list '
-			.	'WHERE completed_at IS NULL '
-			.		'AND ( missing_dependencies IS NOT NULL OR missing_subtasks IS NOT NULL ) '
-			.	'ORDER BY priority DESC , total_missing_dependencies ASC , added_at DESC' )->execute( );
+			.	'WHERE badness <> 0 '
+			.	'ORDER BY priority DESC , badness , added_at DESC' )->execute( );
 	}
 
 
@@ -53,13 +51,13 @@ class DAO_Tasks
 	{
 		return $this->query(
 			'SELECT * FROM tasks_list '
-			.	'WHERE item = $1 '
+			.	'WHERE item = $1 AND parent_task IS NULL '
 			.	'ORDER BY ( CASE '
 			.			'WHEN completed_at IS NULL THEN '
 			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , total_missing_dependencies ASC NULLS FIRST , added_at DESC'
+			.		'END ) DESC , badness , added_at DESC'
 		)->execute( $item->id );
 	}
 
@@ -69,7 +67,7 @@ class DAO_Tasks
 		return $this->query(
 			'SELECT * FROM tasks_list '
 			.	'WHERE assigned_to_id = $1 '
-			.	'ORDER BY priority DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+			.	'ORDER BY priority DESC , badness , added_at DESC'
 		)->execute( $user->user_id );
 	}
 
@@ -113,45 +111,64 @@ class DAO_Tasks
 			.				'priority '
 			.			'ELSE '
 			.				'-1 '
-			.		'END ) DESC , missing_dependencies ASC NULLS FIRST , added_at DESC'
+			.		'END ) DESC , badness , added_at DESC'
 		)->execute( $id );
 		$task->moveDownTargets = $this->query(
 			'SELECT * FROM tasks_move_down_targets '
 			.	'WHERE task_id = $1 '
 			.	'ORDER BY target_title' )->execute( $id );
 		$task->dependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
 			.		'i.item_name AS item_name , '
 			.		'( ct.completed_task_time IS NOT NULL ) AS completed , '
-			.		'tl.total_missing_dependencies AS missing_dependencies '
+			.		'tl.badness AS missing_dependencies '
 			.	'FROM task_dependencies td '
 			.		'INNER JOIN tasks t ON t.task_id = td.task_id_depends '
-			.		'INNER JOIN task_containers tc USING ( tc_id ) '
 			.		'INNER JOIN tasks_list tl ON tl.id = t.task_id '
 			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks ct ON ct.task_id = t.task_id '
 			.	'WHERE td.task_id = $1 '
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->reverseDependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
 			.		'i.item_name AS item_name , '
 			.		'( ct.completed_task_time IS NOT NULL ) AS completed '
 			.	'FROM task_dependencies td '
 			.		'INNER JOIN tasks t USING( task_id ) '
-			.		'INNER JOIN task_containers tc USING ( tc_id ) '
 			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks ct ON t.task_id = ct.task_id '
 			.	'WHERE td.task_id_depends = $1 '
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->possibleDependencies = $this->query(
-			'SELECT t.task_id AS id , t.task_title AS title , tc.item_id AS item , '
+			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
 			.		'i.item_name AS item_name '
 			.	'FROM tasks_possible_dependencies( $1 ) t '
-			.		'INNER JOIN task_containers tc USING ( tc_id ) '
 			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
+		$task->lineage = null;
 
 		return $task;
+	}
+
+
+	public function getLineage( $task )
+	{
+		if ( ! in_array( 'lineage' , get_object_vars( $task ) ) || $task->lineage === null ) {
+			$result = $this->query(
+				'SELECT task_id , task_title '
+				.	'FROM tasks_tree tt '
+				.		'INNER JOIN tasks '
+				.			'ON task_id = tt.task_id_parent '
+				.	'WHERE task_id_child = $1 AND tt_depth > 0 '
+				.	'ORDER BY tt_depth DESC'
+			)->execute( $task->id );
+
+			$task->lineage = array( );
+			foreach ( $result as $row ) {
+				array_push( $task->lineage , array( $row->task_id , $row->task_title ) );
+			}
+		}
+		return $task->lineage;
 	}
 
 
@@ -169,17 +186,7 @@ class DAO_Tasks
 	public function canFinish( $task )
 	{
 		assert( $task->completed_at == null );
-		foreach ( $task->dependencies as $dependency ) {
-			if ( $dependency->completed != 't' ) {
-				return false;
-			}
-		}
-		foreach ( $task->subtasks as $subtask ) {
-			if ( $subtask->completed_at === null ) {
-				return false;
-			}
-		}
-		return true;
+		return ( $task->badness == 0 );
 	}
 
 

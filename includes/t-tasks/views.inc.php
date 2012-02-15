@@ -72,11 +72,14 @@ class View_TasksList
 		if ( $task->completed_by !== null ) {
 			$this->generateCompletedTask( $cell , $classes , $task );
 		} else {
-			if ( $task->missing_dependencies !== null ) {
+			if ( $task->unsatisfied_direct_dependencies > 0 ) {
 				$this->generateMissingDependencies( $cell , $classes , $task );
 			}
-			if ( $task->missing_subtasks !== null ) {
+			if ( $task->incomplete_subtasks > 0 ) {
 				$this->generateMissingSubtasks( $cell , $classes , $task );
+			}
+			if ( $task->unsatisfied_inherited_dependencies > 0 ) {
+				$this->generateMissingInherited( $cell , $classes , $task );
 			}
 			if ( $task->assigned_to !== null ) {
 				$this->generateAssignedTask( $cell , $classes , $task );
@@ -98,9 +101,8 @@ class View_TasksList
 			return;
 		}
 
-		if ( $task->item !== null ) {
-			$this->addItem( $cell , $task );
-		} else {
+		$this->addItem( $cell , $task );
+		if ( $task->parent_task !== null ) {
 			$this->addParentTask( $cell , $task );
 		}
 	}
@@ -128,13 +130,21 @@ class View_TasksList
 
 	protected function addParentTask( &$cell , $task )
 	{
-		$parent = $this->dao->get( $task->parent_task );
+		$parents = $this->dao->getLineage( $task );
+		$contents = array( );
+		foreach ( $parents as $parent ) {
+			list( $id , $title ) = $parent;
+			if ( ! empty( $contents ) ) {
+				array_push( $contents , ' &raquo; ' );
+			}
+			array_push( $contents , HTML::make( 'a' )
+				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $id )
+				->appendText( $title ) );
+		}
 
 		array_push( $cell , HTML::make( 'dd' )
 			->appendText( 'Sub-task of ' )
-			->appendElement( HTML::make( 'a' )
-				->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $parent->id )
-				->appendText( $parent->title ) ) );
+			->append( $contents ) );
 	}
 
 	protected function generateMissingDependencies( &$cell , &$classes , $task )
@@ -143,15 +153,15 @@ class View_TasksList
 			return;
 		}
 
-		if ( $task->missing_dependencies > 1 ) {
+		if ( $task->unsatisfied_direct_dependencies > 1 ) {
 			$end = 'ies';
 		} else {
 			$end = 'y';
 		}
 		array_push( $cell ,
-			$md = HTML::make( 'dd' )->appendText( "{$task->missing_dependencies} missing dependenc$end" ) );
-		if ( $task->total_missing_dependencies != $task->missing_dependencies ) {
-			$md->appendText( " ({$task->total_missing_dependencies} when counting transitive dependencies)" );
+			$md = HTML::make( 'dd' )->appendText( "{$task->unsatisfied_direct_dependencies} missing dependenc$end" ) );
+		if ( $task->unsatisfied_direct_dependencies != $task->unsatisfied_transitive_dependencies ) {
+			$md->appendText( " ({$task->unsatisfied_transitive_dependencies} when counting transitive dependencies)" );
 		}
 
 		array_push( $classes , 'missing-deps' );
@@ -163,13 +173,30 @@ class View_TasksList
 			return;
 		}
 
-		if ( $task->missing_subtasks > 1 ) {
+		if ( $task->incomplete_subtasks > 1 ) {
 			$end = 's';
 		} else {
 			$end = '';
 		}
-		array_push( $cell ,
-			$md = HTML::make( 'dd' )->appendText( "{$task->missing_subtasks} incomplete sub-task$end" ) );
+		array_push( $cell , HTML::make( 'dd' )->appendText(
+				"{$task->incomplete_subtasks} incomplete sub-task$end (out of {$task->total_subtasks})" ) );
+
+		array_push( $classes , 'missing-deps' );
+	}
+
+	protected function generateMissingInherited( &$cell , &$classes , $task )
+	{
+		if ( ! array_key_exists( 'deps' , $this->features ) ) {
+			return;
+		}
+
+		if ( $task->unsatisfied_inherited_dependencies > 1 ) {
+			$end = 'ies';
+		} else {
+			$end = 'y';
+		}
+		array_push( $cell , HTML::make( 'dd' )->appendText(
+				"{$task->unsatisfied_inherited_dependencies} unsatisfied dependenc$end in parent task(s)" ) );
 
 		array_push( $classes , 'missing-deps' );
 	}
@@ -213,21 +240,28 @@ class View_TaskDetails
 	public function render( )
 	{
 		$list = HTML::make( 'dl' )
-			->setAttribute( 'class' , 'tasks' );
+			->setAttribute( 'class' , 'tasks' )
+			->appendElement( HTML::make( 'dt' )
+				->appendText( 'On item:' ) )
+			->appendElement( HTML::make( 'dd' )
+				->append( $this->formatPlaceLineage( $this->task->item ) ) );
 
-		if ( $this->task->item !== null ) {
-			$list->appendElement( HTML::make( 'dt' )
-					->appendText( 'On item:' ) )
-				->appendElement( HTML::make( 'dd' )
-					->append( $this->formatPlaceLineage( $this->task->item ) ) );
-		} else {
+		if ( $this->task->parent_task !== null ) {
+			$parents = Loader::DAO( 'tasks' )->getLineage( $this->task );
+			$contents = array( );
+			foreach ( $parents as $parent ) {
+				list( $id , $title ) = $parent;
+				if ( ! empty( $contents ) ) {
+					array_push( $contents , ' &raquo; ' );
+				}
+				array_push( $contents , HTML::make( 'a' )
+					->setAttribute( 'href' , $this->base . '/tasks/view?id=' . $id )
+					->appendText( $title ) );
+			}
 			$list->appendElement( HTML::make( 'dt' )
 					->appendText( 'Sub-task of:' ) )
 				->appendElement( HTML::make( 'dd' )
-					->appendElement( HTML::make( 'a' )
-						->setAttribute( 'href' , $this->base .
-							'/tasks/view?id=' . $this->task->parent_task->id )
-						->appendText( $this->task->parent_task->title ) ) );
+					->append( $contents ) );
 		}
 
 		if ( $this->task->description != '' ) {

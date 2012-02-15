@@ -6,26 +6,20 @@ CREATE FUNCTION add_task( t_item INT , t_title TEXT , t_description TEXT , t_pri
 		SECURITY INVOKER
 	AS $add_task$
 DECLARE
-	_container		INT;
 	_logical_container	INT;
 BEGIN
-	SELECT INTO _container tc_id
-		FROM task_containers
-		WHERE item_id = t_item;
-	IF NOT FOUND THEN
-		RETURN 2;
-	END IF;
-
 	SELECT INTO _logical_container ltc_id
 		FROM logical_task_containers
 		WHERE task_id IS NULL;
 
-	INSERT INTO tasks ( tc_id , ltc_id , task_title , task_description , task_priority , user_id )
-		VALUES ( _container , _logical_container , t_title , t_description , t_priority , t_user );
+	INSERT INTO tasks ( item_id , ltc_id , task_title , task_description , task_priority , user_id )
+		VALUES ( t_item , _logical_container , t_title , t_description , t_priority , t_user );
 	RETURN 0;
 EXCEPTION
 	WHEN unique_violation THEN
 		RETURN 1;
+	WHEN foreign_key_violation THEN
+		RETURN 2;
 END;
 $add_task$ LANGUAGE plpgsql;
 
@@ -40,14 +34,14 @@ CREATE FUNCTION tasks_add_nested( t_parent INT , t_title TEXT , t_description TE
 		SECURITY INVOKER
 	AS $tasks_add_nested$
 DECLARE
-	_container		INT;
+	_item			INT;
 	_logical_container	INT;
 BEGIN
-	SELECT INTO _container tc.tc_id
-		FROM task_containers tc
-			INNER JOIN tasks t USING ( task_id )
+	SELECT INTO _item item_id
+		FROM tasks t
 			LEFT OUTER JOIN completed_tasks ct USING ( task_id )
-		WHERE t.task_id = t_parent AND ct.task_id IS NULL;
+		WHERE t.task_id = t_parent AND ct.task_id IS NULL
+		FOR UPDATE OF t;
 	IF NOT FOUND THEN
 		RETURN 2;
 	END IF;
@@ -56,8 +50,8 @@ BEGIN
 		FROM logical_task_containers
 		WHERE task_id = t_parent;
 
-	INSERT INTO tasks ( tc_id , ltc_id , task_title , task_description , task_priority , user_id )
-		VALUES ( _container , _logical_container , t_title , t_description , t_priority , t_user );
+	INSERT INTO tasks ( task_id_parent , item_id , ltc_id , task_title , task_description , task_priority , user_id )
+		VALUES ( t_parent , _item , _logical_container , t_title , t_description , t_priority , t_user );
 	RETURN 0;
 EXCEPTION
 	WHEN unique_violation THEN
@@ -77,29 +71,8 @@ CREATE FUNCTION finish_task( t_id INT , u_id INT , n_text TEXT )
 		SECURITY INVOKER
 	AS $finish_task$
 BEGIN
-	PERFORM 1
-		FROM tasks t
-			LEFT OUTER JOIN (
-				SELECT ltc.task_id , COUNT( * ) AS c
-					FROM logical_task_containers ltc
-						INNER JOIN tasks t
-							USING ( ltc_id )
-						LEFT OUTER JOIN completed_tasks ct
-							ON ct.task_id = t.task_id
-					WHERE ltc.task_id = t_id
-						AND ct.task_id IS NULL
-					GROUP BY ltc.task_id
-				) s1 USING ( task_id )
-			LEFT OUTER JOIN (
-				SELECT td.task_id , COUNT( * ) AS c
-					FROM task_dependencies td
-						LEFT OUTER JOIN completed_tasks ct
-							ON ct.task_id = td.task_id_depends
-					WHERE td.task_id = t_id
-						AND ct.task_id IS NULL
-					GROUP BY td.task_id
-				) s2 USING ( task_id )
-		WHERE task_id = t_id AND s1.c IS NULL AND s2.c IS NULL;
+	PERFORM 1 FROM tasks_single_view t
+		WHERE task_id = t_id AND badness = 0;
 	IF NOT FOUND THEN
 		RETURN 2;
 	END IF;
@@ -113,7 +86,6 @@ BEGIN
 	END;
 
 	UPDATE tasks SET user_id_assigned = NULL WHERE task_id = t_id;
-
 	INSERT INTO notes ( task_id , user_id , note_text )
 		VALUES ( t_id , u_id , n_text );
 	RETURN 0;
@@ -194,8 +166,9 @@ BEGIN
 		RETURN 4;
 	END IF;
 
-	SELECT INTO tc tc_id FROM task_containers
-		WHERE item_id = p_id;
+	PERFORM 1 FROM items
+		WHERE item_id = p_id
+		FOR UPDATE;
 	IF NOT FOUND THEN
 		RETURN 2;
 	END IF;
@@ -203,7 +176,7 @@ BEGIN
 	IF t_assignee = 0 THEN
 		t_assignee := NULL;
 	END IF;
-	UPDATE tasks SET tc_id = tc , task_title = t_title ,
+	UPDATE tasks SET item_id = p_id , task_title = t_title ,
 			task_description = t_description ,
 			task_priority = t_priority ,
 			user_id_assigned = t_assignee

@@ -48,9 +48,12 @@ class View_ItemsTree
 				->appendElement( HTML::make( 'a' )
 					->setAttribute( 'href' , $this->base . '/items/view?id=' . $item->id )
 					->appendText( $item->name ) ) )
-			->appendElement( HTML::make( 'td' )
+			->appendElement( $tasks = HTML::make( 'td' )
 				->setAttribute( 'class' , 'align-right' )
-				->appendRaw( (int) $item->activeTasks ) ) );
+				->appendRaw( $item->activeTasks ) ) );
+		if ( $item->activeTasksTotal != $item->activeTasks ) {
+			$tasks->appendText( " ({$item->activeTasksTotal})" );
+		}
 
 		foreach ( $children as $child ) {
 			$this->renderItem( $table , $child );

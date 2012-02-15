@@ -287,9 +287,9 @@ class Ctrl_EditTaskForm
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
 				->setDefaultValue( $task->id ) )
 			->addField( Loader::Create( 'Field' , 'nested' , 'hidden' )
-				->setDefaultValue( $task->item === null ? 1 : 0 ) );
+				->setDefaultValue( $task->parent_task === null ? 0 : 1 ) );
 
-		if ( $task->item !== null ) {
+		if ( $task->parent_task === null ) {
 			$form->addField( $this->createItemSelector( )
 				->setDefaultValue( $task->item ) );
 		}
@@ -457,7 +457,7 @@ class Ctrl_DependencyAddForm
 		$form = Loader::Create( 'Form' , 'Add dependency' , 'add-dep' )
 			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
 			->setDefaultValue( $id ) );
-		$this->addDependencySelector( $form , $task->possibleDependencies , $task->item !== null );
+		$this->addDependencySelector( $form , $task->possibleDependencies , $task->parent_task === null );
 		return $form->setURL( 'tasks/view?id=' . $id )
 			->addController( Loader::Ctrl( 'dependency_add' ) )
 			->controller( );

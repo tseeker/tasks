@@ -175,10 +175,10 @@ class DAO_Items
 		}
 
 		$query = $this->query(
-			'SELECT p.item_id , p.item_name , p.item_description , COUNT(*) AS t_count '
+			'SELECT p.item_id , p.item_name , p.item_description , COUNT(*) AS t_count_all , '
+			.		'COUNT( NULLIF( t.task_id_parent IS NULL , FALSE ) ) AS t_count '
 			.	'FROM items p '
-			.		'INNER JOIN task_containers USING ( item_id ) '
-			.		'INNER JOIN tasks t USING( tc_id ) '
+			.		'INNER JOIN tasks t USING( item_id ) '
 			.		'LEFT OUTER JOIN completed_tasks c ON t.task_id = c.task_id '
 			.	'WHERE c.task_id IS NULL '
 			.	'GROUP BY item_id, p.item_name' );
@@ -193,6 +193,7 @@ class DAO_Items
 				$this->loaded[ $entry->item_id ] = $object;
 			}
 			$object->activeTasks = $entry->t_count;
+			$object->activeTasksTotal = $entry->t_count_all;
 		}
 
 		$this->activeTasksCounted = true;

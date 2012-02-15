@@ -28,23 +28,6 @@ GRANT SELECT,UPDATE ON task_dependencies_taskdep_id_seq TO :webapp_user;
 
 
 /*
- * Task containers
- * ----------------
- *
- * A task container is either an item or a task. Task names within the
- * same task container are unique.
- */
-CREATE TABLE task_containers (
-	tc_id		SERIAL NOT NULL PRIMARY KEY ,
-	task_id		INT UNIQUE ,
-	item_id		INT UNIQUE ,
-	CHECK( task_id IS NULL AND item_id IS NOT NULL OR task_id IS NOT NULL AND item_id IS NULL )
-);
-
-GRANT SELECT ON task_containers TO :webapp_user;
-
-
-/*
  * Logical task containers
  * ------------------------
  *
@@ -88,13 +71,6 @@ ALTER TABLE items ADD FOREIGN KEY (item_id_parent)
 GRANT SELECT,INSERT,UPDATE,DELETE ON items TO :webapp_user;
 
 
--- Add reference from task containers to items
-ALTER TABLE task_containers
-	ADD FOREIGN KEY ( item_id ) REFERENCES items( item_id )
-		ON UPDATE NO ACTION
-		ON DELETE CASCADE;
-
-
 
 --  Table users
 CREATE TABLE users (
@@ -117,8 +93,9 @@ CREATE TABLE tasks (
 	task_id						INT NOT NULL DEFAULT NEXTVAL('tasks_task_id_seq'::TEXT),
 	ltc_id						INT NOT NULL REFERENCES logical_task_containers( ltc_id )
 								ON UPDATE NO ACTION ON DELETE CASCADE ,
-	tc_id						INT NOT NULL REFERENCES task_containers( tc_id )
+	item_id						INT NOT NULL REFERENCES items ( item_id )
 								ON UPDATE NO ACTION ON DELETE CASCADE ,
+	task_id_parent					INT ,
 	task_title					VARCHAR(256) NOT NULL,
 	task_priority					INT NOT NULL,
 	task_description				TEXT NOT NULL,
@@ -129,16 +106,21 @@ CREATE TABLE tasks (
 	PRIMARY KEY( task_id )
 );
 
-CREATE UNIQUE INDEX i_tasks_title ON tasks (tc_id,task_title);
+
+ALTER TABLE tasks
+	ADD FOREIGN KEY ( task_id_parent ) REFERENCES tasks ( task_id )
+		ON DELETE CASCADE ON UPDATE NO ACTION;
+
+CREATE UNIQUE INDEX i_tasks_title_toplevel
+	ON tasks ( item_id , task_title )
+	WHERE task_id_parent IS NULL;
+CREATE UNIQUE INDEX i_tasks_title_subtask
+	ON tasks ( task_id_parent , task_title )
+	WHERE task_id_parent IS NULL;
+	
 CREATE UNIQUE INDEX i_tasks_ltc ON tasks (task_id , ltc_id);
 GRANT SELECT,INSERT,UPDATE,DELETE ON tasks TO :webapp_user;
 
-
--- Add reference from task containers to tasks
-ALTER TABLE task_containers
-	ADD FOREIGN KEY ( task_id ) REFERENCES tasks( task_id )
-		ON UPDATE NO ACTION
-		ON DELETE CASCADE;
 
 -- Add reference from logical task containers to tasks
 ALTER TABLE logical_task_containers
@@ -155,6 +137,27 @@ CREATE TABLE items_tree (
 	PRIMARY KEY(item_id_parent,item_id_child)
 );
 GRANT SELECT ON items_tree TO :webapp_user;
+
+
+/*
+ * Tree of tasks
+ *
+ * This table caches the hierarchy of tasks. Its contents are generated
+ * automatically when tasks are added, deleted or modified.
+ */
+CREATE TABLE tasks_tree (
+	task_id_parent					INT NOT NULL
+								REFERENCES tasks( task_id )
+									ON UPDATE NO ACTION
+									ON DELETE CASCADE ,
+	task_id_child					INT NOT NULL
+								REFERENCES tasks( task_id )
+									ON UPDATE NO ACTION
+									ON DELETE CASCADE ,
+	tt_depth					INT NOT NULL,
+	PRIMARY KEY( task_id_parent , task_id_child )
+);
+GRANT SELECT ON tasks_tree TO :webapp_user;
 
 
 

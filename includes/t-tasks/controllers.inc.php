@@ -98,16 +98,16 @@ class Ctrl_TaskDetails
 			$bTitle = "Active task";
 		}
 
-		if ( $this->task->item !== null ) {
-			$items = Loader::DAO( 'items' );
-			$items->getLineage( $this->task->item = $items->get( $this->task->item ) );
-		} else {
-			$this->task->parent_task = Loader::DAO( 'tasks' )->get( $this->task->parent_task );
+		$items = Loader::DAO( 'items' );
+		$tasks = Loader::DAO( 'tasks' );
+
+		$items->getLineage( $this->task->item = $items->get( $this->task->item ) );
+		if ( $this->task->parent_task !== null ) {
+			$this->task->parent_task = $tasks->get( $this->task->parent_task );
 		}
 
 		$box = Loader::View( 'box' , $bTitle , Loader::View( 'task_details' , $this->task ) );
 
-		$tasks = Loader::DAO( 'tasks' );
 		if ( $this->task->completed_by === null ) {
 			$box->addButton( BoxButton::create( 'Edit task' , 'tasks/edit?id=' . $this->task->id )
 					->setClass( 'icon edit' ) );
@@ -138,7 +138,7 @@ class Ctrl_TaskDetails
 			$timestamp = strtotime( $this->task->completed_at );
 		}
 
-		if ( Loader::DAO( 'tasks' )->canDelete( $this->task ) ) {
+		if ( $tasks->canDelete( $this->task ) ) {
 			$box->addButton( BoxButton::create( 'Delete' , 'tasks/delete?id=' . $this->task->id )
 					->setClass( 'icon delete' ) );
 		}
