@@ -4,4 +4,8 @@ Requires PostgreSQL 9.0+
 2) Set the web app's user name and the database's name in database/config.sql,
 3) Run the database.sql script from psql,
 4) Copy/rename includes/config-sample.inc.php to includes/config.inc.php,
-5) Set user name / password in includes/config.inc.php
+5) Set user name / password in includes/config.inc.php,
+6) Copy/rename site/.htaccess.sample to site/.htaccess,
+7) Update the rewrite rules in site/.htaccess as necessary.
+
+Ideally, only the site/ directory should be available through the web server.
