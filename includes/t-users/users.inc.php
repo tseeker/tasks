@@ -267,7 +267,7 @@ class Ctrl_UsersEditForm
 					->setDescription( 'Display name:' )
 					->setMandatory( false )
 					->setValidator( Loader::Create( 'Validator_StringLength' , 'This display name',
-										5 , 256 , true ) )
+										0 , 256 , true ) )
 					->setDefaultValue( $user->user_display_name ) )
 			->addController( Loader::Ctrl( 'users_edit' ) )
 			->setURL( 'users/view?id=' . $userId );
