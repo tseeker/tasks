@@ -1,4 +1,4 @@
-<?
+<?php
 
 $package[ 'requires' ][] = 'form';
 $package[ 'requires' ][] = 'hub-page';
