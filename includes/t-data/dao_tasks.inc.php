@@ -176,10 +176,12 @@ class DAO_Tasks
 	{
 		if ( $task->completed_by !== null ) {
 			$ts = strtotime( $task->completed_at );
-			return ( time() - $ts > 7 * 3600 * 24 );
+			return empty( $task->reverseDependencies )
+				&& ( time() - $ts > 7 * 3600 * 24 );
 		}
-		$ts = strtotime( $task->added_at );
-		return ( time() - $ts < 600 ) && ( $task->uid == $_SESSION[ 'uid' ] );
+		return empty( $task->subtasks )
+			&& empty( $task->reverseDependencies )
+			&& ( $task->uid == $_SESSION[ 'uid' ] );
 	}
 
 
