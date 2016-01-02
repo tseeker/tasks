@@ -2,6 +2,7 @@
 
 class DAO_Tasks
 	extends DAO
+	implements PackageAware
 {
 	private static $priorities = array(
 			'1'	=> 'Lowest' ,
@@ -10,6 +11,16 @@ class DAO_Tasks
 			'4'	=> 'High' ,
 			'5'	=> 'Very high' ,
 		);
+
+	private $package;
+
+	public function setPackage( Package $package )
+	{
+		if ( $this->package !== null ) {
+			throw new Exception( 'trying to call setPackage() twice' );
+		}
+		$this->package = $package;
+	}
 
 
 	public function translatePriority( $value )
@@ -175,9 +186,11 @@ class DAO_Tasks
 	public function canDelete( $task )
 	{
 		if ( $task->completed_by !== null ) {
+			$minDeletionTime = $this->package->config(
+				'minDeletionTime' , 7 * 3600 * 24 );
 			$ts = strtotime( $task->completed_at );
 			return empty( $task->reverseDependencies )
-				&& ( time() - $ts > 7 * 3600 * 24 );
+				&& ( time() - $ts > $minDeletionTime );
 		}
 		return empty( $task->subtasks )
 			&& empty( $task->reverseDependencies )
