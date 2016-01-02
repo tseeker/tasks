@@ -139,3 +139,32 @@ REVOKE EXECUTE
 CREATE TRIGGER tasks_item_au
 	AFTER UPDATE OF item_id ON tasks
 	FOR EACH ROW EXECUTE PROCEDURE tasks_item_au( );
+
+
+/*
+ * After an update on some task's logical container, set the task's parent ID.
+ */
+DROP FUNCTION IF EXISTS tasks_item_au( ) CASCADE;
+CREATE FUNCTION tasks_ltc_au( )
+		RETURNS TRIGGER
+		LANGUAGE PLPGSQL
+		SECURITY DEFINER
+	AS $tasks_ltc_au$
+BEGIN
+	UPDATE tasks
+		SET task_id_parent = (
+			SELECT task_id
+				FROM logical_task_containers
+				WHERE ltc_id = NEW.ltc_id )
+		WHERE task_id = NEW.task_id;
+	RETURN NEW;
+END;
+$tasks_ltc_au$;
+
+REVOKE EXECUTE
+	ON FUNCTION tasks_ltc_au( )
+	FROM PUBLIC;
+
+CREATE TRIGGER tasks_ltc_au
+	AFTER UPDATE OF ltc_id ON tasks
+	FOR EACH ROW EXECUTE PROCEDURE tasks_ltc_au( );
