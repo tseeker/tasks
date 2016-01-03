@@ -277,9 +277,15 @@ class Ctrl_ItemTasks
 	{
 		$tasks = Loader::DAO( 'tasks' )->getTasksAt( $this->item );
 
-		return Loader::View( 'box' , 'Tasks' , Loader::View( 'tasks_list' , $tasks , array(
-					'deps' , 'assigned' , 'completed' ) ) )
-				->addButton( BoxButton::create( 'Add task' , 'tasks/add?to=' . $this->item->id )
-					->setClass( 'list-add' ) );
+		$box = Loader::View( 'box' , 'Tasks' ,
+			Loader::View( 'tasks_list' , $tasks ,
+				array( 'deps' , 'assigned' , 'completed' ) ) );
+		if ( !empty( $tasks ) ) {
+			$box->addButton( BoxButton::create( 'Move tasks' , 'tasks/move?type=i&id=' . $this->item->id )
+					->setClass( 'icon move' ) );
+		}
+		$box->addButton( BoxButton::create( 'Add task' , 'tasks/add?to=' . $this->item->id )
+				->setClass( 'list-add' ) );
+		return $box;
 	}
 }

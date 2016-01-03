@@ -165,6 +165,10 @@ class Ctrl_TaskListSubtasks
 			Loader::View( 'tasks_list' , $this->task->subtasks , array( 'deps' , 'assigned' , 'completed' ) ) );
 
 		if ( $this->task->completed_by === null ) {
+			if ( !empty( $this->task->subtasks ) ) {
+				$box->addButton( BoxButton::create( 'Move sub-tasks' , 'tasks/move?type=s&id=' . $this->task->id )
+					->setClass( 'icon move' ) );
+			}
 			$box->addButton( BoxButton::create( 'Add sub-task' , 'tasks/add?parent=' . $this->task->id )
 				->setClass( 'list-add' ) );
 		}

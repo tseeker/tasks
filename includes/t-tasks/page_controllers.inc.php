@@ -786,3 +786,63 @@ class Ctrl_TaskMoveUp
 	}
 
 }
+
+
+class Ctrl_TaskMove
+	extends Controller
+{
+
+	public function __construct( )
+	{
+		$this->dTasks = Loader::DAO( 'tasks' );
+		$this->dItems = Loader::DAO( 'items' );
+	}
+
+	public function handle( Page $page )
+	{
+		try {
+			$id = (int) $this->getParameter( 'id' );
+			$type = $this->getParameter( 'type' );
+		} catch ( ParameterException $e ) {
+			return 'tasks';
+		}
+
+		$subtasks = ( $type === 's' );
+		$failure = $subtasks ? 'tasks' : 'items';
+
+		// Get the parent
+		if ( $subtasks ) {
+			$parent = $this->dTasks->get( $id );
+		} else {
+			$parent = $this->dItems->get( $id );
+		}
+		if ( $parent === null ) {
+			return $failure;
+		}
+
+		// If the parent's empty, go back to displaying it
+		$failure .= '/view?id=' . $id;
+		if ( $subtasks ) {
+			$tasks = $parent->subtasks;
+			$name = $parent->title;
+		} else {
+			$tasks = $this->dTasks->getTasksAt( $parent );
+			$name = $parent->name;
+		}
+		if ( empty( $tasks ) ) {
+			return $failure;
+		}
+
+		// Generate form
+		$page->setTitle( $name . ': move tasks' );
+		$form = Loader::Create( 'Form' , 'Move tasks' , 'move-tasks' )
+			->addField( Loader::Create( 'Field' , 'type' , 'hidden' )
+				->setDefaultValue( $subtasks ? 's' : 'i' ) )
+			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
+				->setDefaultValue( $id ) ) ;
+//		$this->addDependencySelector( $form , $task->possibleDependencies , $task->parent_task === null );
+		return $form->setURL( $failure )
+//			->addController( Loader::Ctrl( 'dependency_add' ) )
+			->controller( );
+	}
+}
