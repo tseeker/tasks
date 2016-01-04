@@ -6,7 +6,7 @@
  *	0	No error
  *	1	Deleted tasks
  *	2	Moved tasks (not in specified container)
- *	3	Target item/task deleted
+ *	3	Target item/task deleted or completed
  *	4	Moving tasks to one of their children
  *	5	Dependencies would be broken, and _force is FALSE
  */
@@ -57,9 +57,11 @@ BEGIN
 
 	-- Make sure that the destination exists. Also get the target LTC ID.
 	IF _toTask THEN
-		SELECT INTO _ltc_dest ltc_id
-			FROM logical_task_containers
-			WHERE task_id = _toId;
+		SELECT INTO _ltc_dest _ltc.ltc_id
+			FROM logical_task_containers _ltc
+				LEFT OUTER JOIN completed_tasks _ct
+					USING( task_id )
+			WHERE _ltc.task_id = _toId AND _ct.task_id IS NULL;
 	ELSE
 		SELECT INTO _ltc_dest ltc_id
 			FROM logical_task_containers
