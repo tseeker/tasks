@@ -32,6 +32,7 @@ $package[ 'ctrls' ][] = 'task_details';
 $package[ 'ctrls' ][] = 'task_list_subtasks';
 $package[ 'ctrls' ][] = 'task_move_down';
 $package[ 'ctrls' ][] = 'task_move_up';
+$package[ 'ctrls' ][] = 'task_move_form';
 $package[ 'ctrls' ][] = 'task_move';
 $package[ 'ctrls' ][] = 'task_notes';
 $package[ 'ctrls' ][] = 'toggle_task';

@@ -145,3 +145,23 @@ $tasks_move_down$;
 
 REVOKE EXECUTE ON FUNCTION tasks_move_down( INT , INT , BOOLEAN ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION tasks_move_down( INT , INT , BOOLEAN ) TO :webapp_user;
+
+
+/*
+ * Move a set of tasks from a container to another.
+ */
+DROP FUNCTION IF EXISTS tasks_move( _fromTask BOOLEAN , _fromId INT , _toTask BOOLEAN , _toId INT , _force BOOLEAN , _tasks INT[] );
+CREATE FUNCTION tasks_move( _fromTask BOOLEAN , _fromId INT , _toTask BOOLEAN , _toId INT , _force BOOLEAN , _tasks INT[] )
+		RETURNS INT
+		LANGUAGE PLPGSQL
+		STRICT VOLATILE
+		SECURITY DEFINER
+	AS $tasks_move$
+
+BEGIN
+	RETURN 0;
+END;
+$tasks_move$;
+
+REVOKE EXECUTE ON FUNCTION tasks_move( INT , INT , BOOLEAN ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION tasks_move( INT , INT , BOOLEAN ) TO :webapp_user;

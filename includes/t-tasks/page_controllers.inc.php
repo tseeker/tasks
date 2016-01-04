@@ -788,7 +788,7 @@ class Ctrl_TaskMoveUp
 }
 
 
-class Ctrl_TaskMove
+class Ctrl_TaskMoveForm
 	extends Controller
 {
 
@@ -833,16 +833,62 @@ class Ctrl_TaskMove
 			return $failure;
 		}
 
-		// Generate form
+		// Form header
 		$page->setTitle( $name . ': move tasks' );
 		$form = Loader::Create( 'Form' , 'Move tasks' , 'move-tasks' )
+			->setURL( $failure )
+			->addController( Loader::Ctrl( 'task_move' ) )
 			->addField( Loader::Create( 'Field' , 'type' , 'hidden' )
 				->setDefaultValue( $subtasks ? 's' : 'i' ) )
 			->addField( Loader::Create( 'Field' , 'id' , 'hidden' )
-				->setDefaultValue( $id ) ) ;
-//		$this->addDependencySelector( $form , $task->possibleDependencies , $task->parent_task === null );
-		return $form->setURL( $failure )
-//			->addController( Loader::Ctrl( 'dependency_add' ) )
-			->controller( );
+				->setDefaultValue( $id ) );
+
+		// List of targets
+		$tSel = Loader::Create( 'Field' , 'target' , 'select' )
+			->setDescription( 'Move to:' )
+			->addOption( '' , '(please select a target)' );
+		$this->addTargets( $tSel , $subtasks , $id );
+		$form->addField( $tSel );
+
+		// List of tasks
+		$tSel = Loader::Create( 'Field' , 'tasks[]' , 'select' , array( 'multiple' ) )
+			->setDescription( 'Tasks to move:' );
+		foreach ( $tasks as $t ) {
+			$tSel->addOption( $t->id , $t->title );
+		}
+		$form->addField( $tSel );
+
+		return $form->controller( );
 	}
+
+
+	private function addTargets( Field $field , $isTask , $id )
+	{
+		$items = $this->dItems->getTreeList( );
+		$tasks = $this->dTasks->getActiveTasksAssoc( );
+
+		foreach ( $items as $item ) {
+			$title = str_repeat( '--' , $item->depth ) . ' ' . strtoupper( $item->name );
+			$disabled = !$isTask && $item->id == $id;
+			$iid = 'I' . $item->id;
+			$field->addOption( $iid , $title , $disabled );
+			$this->addTargetTasks( $field , $iid , $tasks , $isTask , $id , $item->depth + 1 );
+		}
+	}
+
+	private function addTargetTasks( Field $field , $iid , $tasks , $isTask , $id , $depth )
+	{
+		if ( !array_key_exists( $iid , $tasks ) ) {
+			return;
+		}
+
+		foreach ( $tasks[ $iid ] as $task ) {
+			$title = str_repeat( '--' , $depth ) . '> ' . $task->title;
+			$disabled = $isTask && $task->id == $id;
+			$tid = 'T' . $task->id;
+			$field->addOption( $tid , $title , $disabled );
+			$this->addTargetTasks( $field , $tid , $tasks , $isTask , $id , $depth + 1 );
+		}
+	}
+
 }

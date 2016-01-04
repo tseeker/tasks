@@ -29,6 +29,25 @@ class DAO_Tasks
 	}
 
 
+	public function getActiveTasksAssoc( )
+	{
+		$qr = $this->query(
+			'SELECT id , item , parent_task , title FROM tasks_list '
+			.	'WHERE completed_at IS NULL '
+			.	'ORDER BY priority DESC , badness , added_at DESC' )->execute( );
+		$result = array( );
+		foreach ( $qr as $task ) {
+			$container = $task->parent_task === null ? 'I' : 'T';
+			$container .= $container == 'I' ? $task->item : $task->parent_task;
+			if ( !array_key_exists( $container , $result ) ) {
+				$result[ $container ] = array( );
+			}
+			array_push( $result[ $container ] , $task );
+		}
+		return $result;
+	}
+
+
 	public function getAllTasks( )
 	{
 		return $this->query(
@@ -325,5 +344,16 @@ class DAO_Tasks
 		$result = $this->query( 'SELECT tasks_move_down( $1 , $2 , $3 ) AS success')
 			->execute( $task->id , $sibling , $force ? 't' : 'f' );
 		return ( $result[0]->success == 't' );
+	}
+
+
+	public function moveTasks( $fromTask , $parentId , $toTask , $targetId , $tasks , $force )
+	{
+		$result = $this->query( 'SELECT tasks_move( $1 , $2 , $3 , $4 , $5 , $6::int[] ) AS error' )
+			->execute( $fromTask ? 't' : 'f' , $parentId ,
+				$toTask ? 't' : 'f' , $targetId ,
+				$force ? 't' : 'f' ,
+				'{' . join( ',' , $tasks ) . '}' );
+		return $result[0]->error;
 	}
 }

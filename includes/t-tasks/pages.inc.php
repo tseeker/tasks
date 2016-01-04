@@ -17,7 +17,7 @@ class Page_TasksTasks
 			'view'		=> 'view_task' ,
 			'deps/add'	=> 'dependency_add_form' ,
 			'deps/delete'	=> 'dependency_delete_form' ,
-			'move'		=> 'task_move' ,
+			'move'		=> 'task_move_form' ,
 			'move/down'	=> 'task_move_down' ,
 			'move/up'	=> 'task_move_up' ,
 			'notes/edit'	=> 'edit_note_form' ,

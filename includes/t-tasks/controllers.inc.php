@@ -566,3 +566,125 @@ class Ctrl_TaskClaim
 	}
 
 }
+
+
+class Ctrl_TaskMove
+	extends Controller
+	implements FormAware
+{
+	private $form;
+
+	public function setForm( Form $form )
+	{
+		$this->form = $form;
+	}
+
+	public function handle( Page $page )
+	{
+		$type = $this->form->field( 'type' );
+		$id = $this->form->field( 'id' );
+		$target = $this->form->field( 'target' );
+		$tasks = $this->form->field( 'tasks[]' );
+
+		$tFull = $target->value( );
+		if ( strlen( $tFull ) < 2 ) {
+			$target->putError( 'Invalid target.' );
+			return null;
+		}
+		$toTask = ( substr( $tFull , 0 , 1 ) == 'T' );
+		$toId = (int) substr( $tFull , 1 );
+
+		$error = Loader::DAO( 'tasks' )->moveTasks(
+			$type->value( ) === 's' , (int) $id->value( ) ,
+			$toTask , $toId , $tasks->value( ) ,
+			false ); // FIXME: should be read from the form
+
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$tasks->putError( 'Selected tasks deleted.' );
+			break;
+
+		case 2:
+			$tasks->putError( 'Selected tasks moved.' );
+			break;
+
+		case 3:
+			$target->putError( 'Target has been deleted.' );
+			break;
+
+		case 4:
+			$target->putError( 'This is a child of a selected task.' );
+			break;
+
+		case 5:
+			$tasks->putError( 'Dependencies would be broken (FIXME: force mode)' );
+			break;
+
+		default:
+			$target->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
+	}
+
+	private function addTopLevelTask( )
+	{
+		$item = $this->form->field( 'item' );
+		$name = $this->form->field( 'title' );
+		$priority = $this->form->field( 'priority' );
+		$description = $this->form->field( 'description' );
+
+		$error = Loader::DAO( 'tasks' )->addTask( (int) $item->value( ) , $name->value( ) ,
+			(int) $priority->value( ) , $description->value( ) );
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$name->putError( 'Duplicate task name for this item.' );
+			break;
+
+		case 2:
+			$item->putError( 'This item has been deleted' );
+			break;
+
+		default:
+			$name->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
+	}
+
+	private function addNestedTask( )
+	{
+		$parent = $this->form->field( 'parent' );
+		$name = $this->form->field( 'title' );
+		$priority = $this->form->field( 'priority' );
+		$description = $this->form->field( 'description' );
+
+		$error = Loader::DAO( 'tasks' )->addNestedTask( (int) $parent->value( ) ,
+			$name->value( ) , (int) $priority->value( ) , $description->value( ) );
+		switch ( $error ) {
+
+		case 0:
+			return true;
+
+		case 1:
+			$name->putError( 'Duplicate sub-task name.' );
+			break;
+
+		default:
+			$name->putError( "An unknown error occurred ($error)" );
+			break;
+		}
+
+		return null;
+	}
+}
