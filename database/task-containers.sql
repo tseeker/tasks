@@ -144,7 +144,7 @@ CREATE TRIGGER tasks_item_au
 /*
  * After an update on some task's logical container, set the task's parent ID.
  */
-DROP FUNCTION IF EXISTS tasks_item_au( ) CASCADE;
+DROP FUNCTION IF EXISTS tasks_ltc_au( ) CASCADE;
 CREATE FUNCTION tasks_ltc_au( )
 		RETURNS TRIGGER
 		LANGUAGE PLPGSQL
