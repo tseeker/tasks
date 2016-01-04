@@ -1,4 +1,4 @@
 [submodule "arse"]
 	path = arse
-	url = git@github.com:tseeker/arse.git
+	url = https://github.com/tseeker/arse.git
 	branch = master
