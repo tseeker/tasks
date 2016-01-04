@@ -585,6 +585,11 @@ class Ctrl_TaskMove
 		$id = $this->form->field( 'id' );
 		$target = $this->form->field( 'target' );
 		$tasks = $this->form->field( 'tasks[]' );
+		try {
+			$force = ( (int) $this->getParameter( 'force' , 'POST' ) == 1 );
+		} catch ( ParameterException $e ) {
+			$force = false;
+		}
 
 		$tFull = $target->value( );
 		if ( strlen( $tFull ) < 2 ) {
@@ -597,7 +602,7 @@ class Ctrl_TaskMove
 		$error = Loader::DAO( 'tasks' )->moveTasks(
 			$type->value( ) === 's' , (int) $id->value( ) ,
 			$toTask , $toId , $tasks->value( ) ,
-			false ); // FIXME: should be read from the form
+			$force );
 
 		switch ( $error ) {
 
@@ -621,7 +626,12 @@ class Ctrl_TaskMove
 			break;
 
 		case 5:
-			$tasks->putError( 'Dependencies would be broken (FIXME: force mode)' );
+			$tasks->putError( 'Dependencies would be broken' );
+			$this->form->addField( Loader::Create( 'Field' , 'force' , 'select' )
+				->setMandatory( false )
+				->setDescription( 'Break dependencies:' )
+				->addOption( '0' , 'No' )
+				->addOption( '1' , 'Yes' ) );
 			break;
 
 		default:
