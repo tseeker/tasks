@@ -94,30 +94,49 @@ BEGIN
 	END IF;
 
 	-- If we're changing the LTC, handle dependencies.
-	IF _ltc_source <> _ltc_dest AND NOT _force THEN
-		-- Check them if we're not forcing the move.
-		PERFORM _tdn.task_id
-			FROM taskdep_nodes _tdn
-				INNER JOIN _tm_tasks _tmt
-					USING( task_id )
-				LEFT OUTER JOIN _tm_tasks _tmt2
-					ON _tmt2.task_id = _tdn.task_id_copyof
-			WHERE _tdn.tnode_depth = 1 AND _tmt2.task_id IS NULL;
-		IF FOUND THEN
-			RETURN 5;
+	IF _ltc_source <> _ltc_dest THEN
+		-- Start with external dependencies
+		IF NOT _force THEN
+			-- Check them if we're not forcing the move.
+			PERFORM _tdn.task_id
+				FROM taskdep_nodes _tdn
+					INNER JOIN _tm_tasks _tmt
+						USING( task_id )
+					LEFT OUTER JOIN _tm_tasks _tmt2
+						ON _tmt2.task_id = _tdn.task_id_copyof
+				WHERE _tdn.tnode_depth = 1 AND _tmt2.task_id IS NULL;
+			IF FOUND THEN
+				RETURN 5;
+			END IF;
+		ELSE
+			-- Otherwise, break them.
+			DELETE FROM task_dependencies
+				WHERE taskdep_id IN (
+					SELECT DISTINCT _tdn.taskdep_id
+						FROM taskdep_nodes _tdn
+							INNER JOIN _tm_tasks _tmt
+								USING( task_id )
+							LEFT OUTER JOIN _tm_tasks _tmt2
+								ON _tmt2.task_id = _tdn.task_id_copyof
+						WHERE _tdn.tnode_depth = 1 AND _tmt2.task_id IS NULL
+				);
 		END IF;
-	ELSIF _ltc_source <> _ltc_dest AND _force THEN
-		-- Otherwise, break them.
+
+		-- Store all internal dependencies, we'll recreate them after
+		-- the tasks have been moved.
+		SET LOCAL client_min_messages=warning;
+		DROP TABLE IF EXISTS _tm_deps;
+		RESET client_min_messages;
+		CREATE TEMPORARY TABLE _tm_deps(
+			task_id	INT ,
+			task_id_depends INT
+		) ON COMMIT DROP;
+		INSERT INTO _tm_deps ( task_id , task_id_depends )
+			SELECT task_id , task_id_depends
+				FROM task_dependencies
+					INNER JOIN _tm_tasks USING ( task_id );
 		DELETE FROM task_dependencies
-			WHERE taskdep_id IN (
-				SELECT DISTINCT _tdn.taskdep_id
-					FROM taskdep_nodes _tdn
-						INNER JOIN _tm_tasks _tmt
-							USING( task_id )
-						LEFT OUTER JOIN _tm_tasks _tmt2
-							ON _tmt2.task_id = _tdn.task_id_copyof
-					WHERE _tdn.tnode_depth = 1 AND _tmt2.task_id IS NULL
-			);
+			WHERE task_id IN ( SELECT task_id FROM _tm_tasks );
 	END IF;
 
 	-- We're ready to move the tasks themselves.
@@ -130,6 +149,13 @@ BEGIN
 		WHERE task_id IN (
 			SELECT task_id FROM _tm_tasks
 		);
+
+	-- Restore deleted dependencies
+	IF _ltc_dest <> _ltc_source THEN
+		INSERT INTO task_dependencies ( task_id , task_id_depends , ltc_id )
+			SELECT task_id , task_id_depends , _ltc_dest
+				FROM _tm_deps;
+	END IF;
 
 	RETURN 0;
 END;
