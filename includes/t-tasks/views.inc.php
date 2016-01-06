@@ -390,8 +390,15 @@ class View_TaskDependencies
 		}
 
 		$list = HTML::make( 'ul' )->setAttribute( 'class' , 'dep-list' );
-		$prevItem = null;
-		$itemList = null;
+		$showItem = ( $this->task->parent_task === null );
+		if ( $showItem ) {
+			$prevItem = null;
+			$itemList = null;
+		} else {
+			$prevItem = (string) $this->task->item->id;
+			$itemList = $list;
+		}
+
 		foreach ( $this->task->$source as $dependency ) {
 			if ( $prevItem !== $dependency->item ) {
 				$itemList = HTML::make( 'ul' );
