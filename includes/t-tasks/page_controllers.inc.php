@@ -488,6 +488,8 @@ class Ctrl_DependencyAddForm
 		}
 		if ( $submitted !== null ) {
 			$fCtrl->getFiltersFromSelector( );
+		} else {
+			$fCtrl->getFiltersFromSession( );
 		}
 
 		// Fake handling the form
@@ -527,6 +529,11 @@ class Ctrl_DependencyAddForm
 					->addOption( '1' , 'Yes' )
 					->addOption( '0' , 'No' ) );
 		}
+		$filters->addField( Loader::Create( 'Field' , 'keep' , 'select' )
+			->setMandatory( false )
+			->setDescription( 'Keep these filters for next time' )
+			->addOption( '0' , 'No' )
+			->addOption( '1' , 'Yes' ) );
 		return $filters;
 	}
 

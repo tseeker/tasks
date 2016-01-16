@@ -531,6 +531,8 @@ class Ctrl_DependencyAddFiltering
 	extends Controller
 	implements FormAware
 {
+	private static $fields = array( 'text' , 'state' , 'items' , 'item-children' , 'keep' );
+
 	private $filtering;
 	private $selector;
 	private $task;
@@ -553,6 +555,11 @@ class Ctrl_DependencyAddFiltering
 		$this->filterTaskDependencies( );
 		$this->addDependencySelector( );
 		$this->copyFiltersToSelector( );
+		if ( $this->getField( 'keep' ) ) {
+			$this->saveToSession( );
+		} elseif ( array_key_exists( 'add-dep-filters' , $_SESSION ) ) {
+			unset( $_SESSION[ 'add-dep-filters' ] );
+		}
 		return null;
 	}
 
@@ -679,8 +686,7 @@ class Ctrl_DependencyAddFiltering
 
 	private function copyFiltersToSelector( )
 	{
-		$fields = array( 'text' , 'state' , 'items' , 'item-children' );
-		foreach ( $fields as $f ) {
+		foreach ( Ctrl_DependencyAddFiltering::$fields as $f ) {
 			$v = $this->getField( $f );
 			$this->selector->addField(
 				Loader::Create( 'Field' , 'filters-' . $f , 'hidden' )
@@ -689,14 +695,45 @@ class Ctrl_DependencyAddFiltering
 		}
 	}
 
+	private function saveToSession( )
+	{
+		if ( array_key_exists( 'add-dep-filters' , $_SESSION ) ) {
+			$values = $_SESSION[ 'add-dep-filters' ];
+		} else {
+			$values = array( );
+		}
+		foreach ( Ctrl_DependencyAddFiltering::$fields as $f ) {
+			$fld = $this->filtering->field( $f );
+			if ( $fld !== null ) {
+				$values[ $f ] = $fld->value( );
+			}	
+		}
+		$_SESSION[ 'add-dep-filters' ] = $values;
+	}
+
 	public function getFiltersFromSelector( )
 	{
-		$fields = array( 'text' , 'state' , 'items' , 'item-children' );
-		foreach ( $fields as $f ) {
+		foreach ( Ctrl_DependencyAddFiltering::$fields as $f ) {
 			$field = $this->filtering->field( $f );
 			if ( $field !== null ) {
 				$fv = $this->getParameter( 'filters-' . $f , 'POST' );
 				$field->setFormValue( $fv );
+			}
+		}
+	}
+
+	public function getFiltersFromSession( )
+	{
+		if ( !array_key_exists( 'add-dep-filters' , $_SESSION ) ) {
+			return;
+		}
+		$values = $_SESSION[ 'add-dep-filters' ];
+		foreach ( Ctrl_DependencyAddFiltering::$fields as $f ) {
+			if ( array_key_exists( $f , $values ) ) {
+				$field = $this->filtering->field( $f );
+				if ( $field != null ) {
+					$field->setFormValue( $values[ $f ] );
+				}
 			}
 		}
 	}
