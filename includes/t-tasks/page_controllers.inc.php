@@ -433,6 +433,12 @@ class Ctrl_EditNoteForm
 class Ctrl_DependencyAddForm
 	extends Controller
 {
+	private $more;
+
+	public function __construct( $more = false )
+	{
+		$this->more = $more;
+	}
 
 	public function handle( Page $page )
 	{
@@ -458,10 +464,13 @@ class Ctrl_DependencyAddForm
 			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
 				->setDefaultValue( $id ) )
 			->setURL( 'tasks/view?id=' . $id )
-			->addController( Loader::Ctrl( 'dependency_add' ) );
+			->addController( Loader::Ctrl( 'dependency_add' , $this->more ) );
 
+		// Handle filtering and re-displaying
 		$filters = $this->handleFiltering( $page , $form , $task );
-
+		if ( $this->more ) {
+			return $form->controller( );
+		}
 		return array( $form->controller( ) , $filters );
 	}
 

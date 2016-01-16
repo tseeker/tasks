@@ -488,6 +488,12 @@ class Ctrl_DependencyAdd
 	implements FormAware
 {
 	private $form;
+	private $more;
+
+	public function __construct( $more = false )
+	{
+		$this->more = $more;
+	}
 
 	public function setForm( Form $form )
 	{
@@ -496,6 +502,10 @@ class Ctrl_DependencyAdd
 
 	public function handle( Page $page )
 	{
+		if ( $this->more ) {
+			return null;
+		}
+
 		$id = (int) $this->form->field( 'to' )->value( );
 		$dependency = $this->form->field( 'dependency' );
 		$error = Loader::DAO( 'tasks' )->addDependency( $id , $dependency->value( ) );
@@ -503,7 +513,7 @@ class Ctrl_DependencyAdd
 		switch ( $error ) {
 
 		case 0:
-			return true;
+			return $this->checkForMore( );
 
 		case 1:
 			$dependency->putError( 'The task you selected has been deleted.' );
@@ -523,6 +533,16 @@ class Ctrl_DependencyAdd
 		}
 
 		return null;
+	}
+
+
+	private function checkForMore( )
+	{
+		$field = $this->form->field( 'moar' );
+		if ( $field === null || !$field->value( ) ) {
+			return true;
+		}
+		return Loader::Ctrl( 'dependency_add_form' , true );
 	}
 }
 
@@ -629,8 +649,14 @@ class Ctrl_DependencyAddFiltering
 				$select->addOption( $task->id , $task->title );
 			}
 		}
-		return true;
 
+		if ( count( $this->task->possibleDependencies ) > 1 ) {
+			$this->selector->addField( Loader::Create( 'Field' , 'moar' , 'select' )
+				->setDescription( 'Add more dependencies:' )
+				->setMandatory( false )
+				->addOption( '0' , 'No' )
+				->addOption( '1' , 'Yes' ) );
+		}
 	}
 
 	private function getItemsToDisplay( $depsByItem )
