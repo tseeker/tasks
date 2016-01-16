@@ -419,7 +419,7 @@ class Ctrl_EditNoteForm
 				->setDefaultValue( $note->id ) )
 			->addField( Loader::Create( 'Field' , 'text' , 'textarea' )
 				->setDescription( 'Comment:' )
-				->setValidator( Loader::Create( 'Validator_StringLength' , 'Le texte' , 5 ) )
+				->setValidator( Loader::Create( 'Validator_StringLength' , 'This comment' , 5 ) )
 				->setDefaultValue( $note->text ) )
 			->setURL( 'tasks/view?id=' . $note->task )
 			->addController( Loader::Ctrl( 'edit_note' ) )
