@@ -171,8 +171,10 @@ class DAO_Tasks
 			.	'ORDER BY i.item_name , t.task_priority DESC , t.task_title' )->execute( $id );
 		$task->possibleDependencies = $this->query(
 			'SELECT t.task_id AS id , t.task_title AS title , t.item_id AS item , '
-			.		'i.item_name AS item_name '
+			.		'i.item_name AS item_name , l.badness <> 0 AS blocked , '
+			.		'l.completed_at IS NOT NULL AS completed '
 			.	'FROM tasks_possible_dependencies( $1 ) t '
+			.		'INNER JOIN tasks_list l ON t.task_id = l.id '
 			.		'LEFT OUTER JOIN items i USING ( item_id ) '
 			.	'ORDER BY i.item_name , t.task_priority , t.task_title' )->execute( $id );
 		$task->lineage = null;

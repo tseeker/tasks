@@ -454,78 +454,90 @@ class Ctrl_DependencyAddForm
 		$page->setTitle( $task->title . ' (task)' );
 
 		// Generate form
-		$form = Loader::Create( 'Form' , 'Add dependency' , 'add-dep' )
+		$form = Loader::Create( 'Form' , 'Add dependency' , 'add-dep' , 'Select dependency' )
 			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
-			->setDefaultValue( $id ) );
-		$this->addDependencySelector( $form , $task->possibleDependencies , $task->parent_task === null );
-		return $form->setURL( 'tasks/view?id=' . $id )
-			->addController( Loader::Ctrl( 'dependency_add' ) )
-			->controller( );
+				->setDefaultValue( $id ) )
+			->setURL( 'tasks/view?id=' . $id )
+			->addController( Loader::Ctrl( 'dependency_add' ) );
 
+		$filters = $this->handleFiltering( $page , $form , $task );
+
+		return array( $form->controller( ) , $filters );
 	}
 
-	private function addDependencySelector( $form , $possibleDependencies , $topLevel )
+	private function handleFiltering( Page $page , Form $form , $task )
 	{
-		$form->addField( $select = Loader::Create( 'Field' , 'dependency' , 'select' )
-			->setDescription( 'Dependency to add:' )
-			->addOption( '' , '(please select a task)' ) );
+		$fCtrl = Loader::Ctrl( 'dependency_add_filtering' , $form , $task );
+		$filters = $this->makeFilteringForm( $form , $fCtrl , $task );
 
-		if ( $topLevel ) {
-			$depsByItem = $this->getDependenciesByItem( $possibleDependencies );
-			$items = $this->getItemsToDisplay( $depsByItem );
-			foreach ( $items as $item ) {
-				$prefix = '-' . str_repeat( '--' , $item->depth );
-				$name = $prefix . ' ' . $item->name;
-				$select->addOption( 'I' . $item->id , $name , true );
-				if ( ! array_key_exists( $item->id , $depsByItem ) ) {
-					continue;
-				}
-
-				foreach ( $depsByItem[ $item->id ] as $task ) {
-					$select->addOption( $task->id , $prefix . '-> ' . $task->title );
-				}
-			}
-		} else {
-			foreach ( $possibleDependencies as $task ) {
-				$select->addOption( $task->id , $task->title );
-			}
+		// Was the filters form submitted?
+		try {
+			$submitted = $this->getParameter( 'filter-deps-submit' , 'POST' );
+		} catch ( ParameterException $e ) {
+			$submitted = null;
 		}
-		return true;
+		if ( $submitted !== null ) {
+			return $filters->controller( )->handle( $page );
+		}
 
+		// Was the main form submitted?
+		try {
+			$submitted = $this->getParameter( 'to' , 'POST' );
+		} catch ( ParameterException $e ) {
+			$submitted = null;
+		}
+		if ( $submitted !== null ) {
+			$fCtrl->getFiltersFromSelector( );
+		}
+
+		// Fake handling the form
+		$fCtrl->handle( $page );
+		return $filters->view( );
 	}
 
-	private function getDependenciesByItem( $possibleDependencies )
+	private function makeFilteringForm( Form $form , Controller $ctrl , $task )
 	{
-		$dbi = array( );
-		foreach ( $possibleDependencies as $pDep ) {
-			$dbi[ $pDep->item ][] = $pDep;
+		// Generate filtering form, and handle it immediately
+		$filters = Loader::Create( 'Form' , 'Apply' , 'filter-deps' , 'Filter dependencies' )
+			->addController( $ctrl )
+			->setAction( '?' )
+			->addField( Loader::Create( 'Field' , 'to' , 'hidden' )
+				->setDefaultValue( $task->id ) )
+			->addField( Loader::Create( 'Field' , 'text' , 'text' )
+				->setDescription( 'Name must contain:' )
+				->setMandatory( false ) )
+			->addField( Loader::Create( 'Field' , 'state' , 'select' )
+				->setDescription( 'Task state:' )
+				->setMandatory( false )
+				->addOption( 'abc' , 'Indifferent' )
+				->addOption( 'ab' , 'Active or blocked' )
+				->addOption( 'a' , 'Active' )
+				->addOption( 'b' , 'Blocked' )
+				->addOption( 'c' , 'Completed' ) );
+		if ( $task->parent_task === null ) {
+			$itemSelect = Loader::Create( 'Field' , 'items' , 'select' )
+				->setDescription( 'Limit to items:' )
+				->setMandatory( false )
+				->addOption( '' , '(Any item)' );
+			$this->addItemSelector( $itemSelect );
+			$filters->addField( $itemSelect )
+				->addField( Loader::Create( 'Field' , 'item-children' , 'select' )
+					->setDescription( 'Include child items:' )
+					->setMandatory( false )
+					->addOption( '1' , 'Yes' )
+					->addOption( '0' , 'No' ) );
 		}
-		return $dbi;
+		return $filters;
 	}
 
-	private function getItemsToDisplay( $depsByItem )
+	// FIXME: duplicate code
+	private function addItemSelector( $select )
 	{
-		$dao = Loader::DAO( 'items' );
-		$allItems = $dao->getTreeList( );
-		$found = array( );
-		foreach ( array_keys( $depsByItem ) as $id ) {
-			if ( array_key_exists( $id , $found ) ) {
-				continue;
-			}
-			$item = $dao->get( $id );
-			foreach ( $dao->getLineage( $item ) as $parent ) {
-				$found[ $parent ] = 1;
-			}
-			$found[ $id ] = 1;
+		$items =  Loader::DAO( 'items' )->getTreeList( );
+		foreach ( $items as $item ) {
+			$name = '-' . str_repeat( '--' , $item->depth ) . ' ' . $item->name;
+			$select->addOption( $item->id , $name );
 		}
-
-		$result = array( );
-		foreach ( $allItems as $item ) {
-			if ( array_key_exists( $item->id , $found ) ) {
-				array_push( $result , $item );
-			}
-		}
-		return $result;
 	}
 }
 

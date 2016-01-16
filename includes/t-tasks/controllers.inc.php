@@ -527,6 +527,188 @@ class Ctrl_DependencyAdd
 }
 
 
+class Ctrl_DependencyAddFiltering
+	extends Controller
+	implements FormAware
+{
+	private $filtering;
+	private $selector;
+	private $task;
+
+	private $dependencies;
+
+	public function __construct( Form $selector , $task )
+	{
+		$this->selector = $selector;
+		$this->task = $task;
+	}
+
+	public function setForm( Form $form )
+	{
+		$this->filtering = $form;
+	}
+
+	public function handle( Page $page )
+	{
+		$this->filterTaskDependencies( );
+		$this->addDependencySelector( );
+		$this->copyFiltersToSelector( );
+		return null;
+	}
+
+	private function filterTaskDependencies( )
+	{
+		$this->dependencies = array( );
+		$text = trim( $this->getField( 'text' ) );
+		if ( $text == '' ) {
+			$text = array( );
+		} else {
+			$text = array_unique( preg_split( '/\s+/' , $text ) );
+		}
+
+		$state = $this->getField( 'state' );
+		$sActive = ( $state == '' || strstr( $state , 'a' ) !== false );
+		$sBlocked = ( $state == '' || strstr( $state , 'b' ) !== false );
+		$sCompleted = ( $state == '' || strstr( $state , 'c' ) !== false );
+
+		foreach ( $this->task->possibleDependencies as $dep ) {
+			// Check for text
+			$ok = true;
+			foreach ( $text as $tCheck ) {
+				$ok = stristr( $dep->title , $tCheck );
+				if ( !$ok ) {
+					break;
+				}
+			}
+			if ( !$ok ) {
+				continue;
+			}
+
+			// Check state
+			$isBlocked = ( $dep->blocked === 't' );
+			$isCompleted = ( $dep->completed === 't' );
+			if ( $isBlocked && !$sBlocked || $isCompleted && !$sCompleted
+					|| !( $isBlocked || $isCompleted ) && !$sActive ) {
+				continue;
+			}
+
+			$this->dependencies[] = $dep;
+		}
+	}
+
+	private function addDependencySelector( )
+	{
+		$this->selector->addField( $select = Loader::Create( 'Field' , 'dependency' , 'select' )
+			->setDescription( 'Dependency to add:' )
+			->addOption( '' , '(please select a task)' ) );
+
+		if ( $this->task->parent_task === null ) {
+			$depsByItem = $this->getDependenciesByItem( );
+			$items = $this->getItemsToDisplay( $depsByItem );
+			foreach ( $items as $item ) {
+				$prefix = '-' . str_repeat( '--' , $item->depth );
+				$name = $prefix . ' ' . $item->name;
+				$select->addOption( 'I' . $item->id , $name , true );
+				if ( ! array_key_exists( $item->id , $depsByItem ) ) {
+					continue;
+				}
+
+				foreach ( $depsByItem[ $item->id ] as $task ) {
+					$select->addOption( $task->id , $prefix . '-> ' . $task->title );
+				}
+			}
+		} else {
+			foreach ( $this->dependencies as $task ) {
+				$select->addOption( $task->id , $task->title );
+			}
+		}
+		return true;
+
+	}
+
+	private function getItemsToDisplay( $depsByItem )
+	{
+		$dao = Loader::DAO( 'items' );
+		$found = array( );
+		foreach ( array_keys( $depsByItem ) as $id ) {
+			if ( array_key_exists( $id , $found ) ) {
+				continue;
+			}
+			$item = $dao->get( $id );
+			foreach ( $dao->getLineage( $item ) as $parent ) {
+				$found[ $parent ] = 1;
+			}
+			$found[ $id ] = 1;
+		}
+
+		$fByItem = $this->getField( 'items' );
+		$fByItem = ( $fByItem == '' ) ? null : ( (int) $fByItem );
+		$fChildren = ( $this->getField( 'item-children' ) === '1' );
+		$fOKChildren = false;
+		$fDepth = -1;
+
+		$result = array( );
+		foreach ( $dao->getTreeList( ) as $item ) {
+			if ( $fByItem !== null && $fChildren ){
+				if ( $item->id == $fByItem ) {
+					$fOKChildren = true;
+					$fDepth = $item->depth;
+				} else if ( $fOKChildren && $item->depth <= $fDepth ) {
+					$fOKChildren = false;
+				}
+			}
+
+			if ( $fByItem !== null && $item->id != $fByItem && !$fOKChildren ) {
+				continue;
+			}
+			if ( array_key_exists( $item->id , $found ) ) {
+				array_push( $result , $item );
+			}
+		}
+		return $result;
+	}
+
+	private function getDependenciesByItem( )
+	{
+		$dbi = array( );
+		foreach ( $this->dependencies as $pDep ) {
+			$dbi[ $pDep->item ][] = $pDep;
+		}
+		return $dbi;
+	}
+
+	private function copyFiltersToSelector( )
+	{
+		$fields = array( 'text' , 'state' , 'items' , 'item-children' );
+		foreach ( $fields as $f ) {
+			$v = $this->getField( $f );
+			$this->selector->addField(
+				Loader::Create( 'Field' , 'filters-' . $f , 'hidden' )
+					->setMandatory( false )
+					->setDefaultValue( $v ) );
+		}
+	}
+
+	public function getFiltersFromSelector( )
+	{
+		$fields = array( 'text' , 'state' , 'items' , 'item-children' );
+		foreach ( $fields as $f ) {
+			$field = $this->filtering->field( $f );
+			if ( $field !== null ) {
+				$fv = $this->getParameter( 'filters-' . $f , 'POST' );
+				$field->setFormValue( $fv );
+			}
+		}
+	}
+
+	private function getField( $name )
+	{
+		$fld = $this->filtering->field( $name );
+		return $fld ? $fld->value( ) : '';
+	}
+}
+
+
 class Ctrl_DependencyDelete
 	extends Controller
 	implements FormAware

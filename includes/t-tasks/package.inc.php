@@ -20,6 +20,7 @@ $package[ 'ctrls' ][] = 'delete_task_form';
 $package[ 'ctrls' ][] = 'delete_task';
 $package[ 'ctrls' ][] = 'dependency_add';
 $package[ 'ctrls' ][] = 'dependency_add_form';
+$package[ 'ctrls' ][] = 'dependency_add_filtering';
 $package[ 'ctrls' ][] = 'dependency_delete';
 $package[ 'ctrls' ][] = 'dependency_delete_form';
 $package[ 'ctrls' ][] = 'edit_note_form';
