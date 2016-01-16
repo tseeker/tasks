@@ -152,7 +152,7 @@ class DAO_Items
 	public function getTreeList( )
 	{
 		if ( $this->tree !== null ) {
-			return $this->tree;
+			return $this->treeList;
 		}
 		$this->loadTree( );
 		return $this->treeList;
